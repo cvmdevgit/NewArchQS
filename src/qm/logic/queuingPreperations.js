@@ -112,7 +112,7 @@ function setRecallSettings(branchID, CurrentState, CurrentTransaction, available
     }
 }
 
-function setOpenSettings(CurrentState,availableActions) {
+function setOpenSettings(CurrentState, availableActions) {
     //Open Button
     if (CurrentState != enums.EmployeeActiontypes.Serving && CurrentState != enums.EmployeeActiontypes.Ready && CurrentState != enums.EmployeeActiontypes.Processing && CurrentState != enums.EmployeeActiontypes.NoCallServing) {
         availableActions.OpenAllowed = true;
@@ -120,7 +120,6 @@ function setOpenSettings(CurrentState,availableActions) {
 }
 
 function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableActions) {
-
     //Serve Button
     availableActions.HideServeButton = configurationService.getCommonSettingsBool(branchID, constants.HIDE_SERVE_BUTTON);
 
@@ -131,19 +130,14 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
     }
     else {
         let Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
-        if (Hold0Enabled) {
-            WindowListButtonsVisible = true;
-        }
+        WindowListButtonsVisible = Hold0Enabled ? true : false;
     }
     let isValidCounterStates = (CurrentState == enums.EmployeeActiontypes.NotReady || CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Custom)
     //ListServingAllowed
     if (WindowListButtonsVisible && isValidCounterStates) {
         availableActions.ListServeAllowed = true;
-
         //If (Serve) button was hidden then keep (Serve With) button enabled
-        if (availableActions.HideServeButton) {
-            availableActions.ListServeWithAllowed = true;
-        }
+        availableActions.ListServeWithAllowed = availableActions.HideServeButton?true:false;
     }
     if (WindowListButtonsVisible && availableActions.HoldAllowed || (availableActions.TransferToServiceAllowed && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0) || availableActions.TransferToCounterAllowed) {
         availableActions.ListServeWithAllowed = true;
@@ -240,7 +234,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     //Set the recall setting
                     setRecallSettings(branchID, State, CurrentTransaction, availableActions)
                     //Open button settings
-                    setOpenSettings(State,availableActions)
+                    setOpenSettings(State, availableActions)
                     //Serve with/ list serving settings
                     setServeWithSettings(branchID, CurrentWindow, State, availableActions);
                     //Automatic Transfer
