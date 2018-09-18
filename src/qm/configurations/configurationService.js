@@ -105,6 +105,22 @@ var getCommonSettings = function (BranchID, Key) {
         logger.logError(error);
     }
 };
+var getCommonSettingsBool = function (BranchID, Key)
+{
+    let TempString = getCommonSettings(BranchID, Key);
+    if (TempString && TempString == "1") {
+        return true;
+    }
+    return false;
+};
+var getCommonSettingsInt = function (BranchID, Key)
+{
+    let TempString = getCommonSettings(BranchID, Key);
+    if (TempString && TempString != "") {
+        return parseInt(TempString);
+    }
+    return 0;
+};
 
 function getUserConfig(UserID) {
     //counter Config
@@ -468,6 +484,11 @@ var initialize = async function () {
         return common.error;
     }
 };
+
+
+module.exports.getCommonSettings = getCommonSettings;
+module.exports.getCommonSettingsBool = getCommonSettingsBool;
+module.exports.getCommonSettingsInt = getCommonSettingsInt;
 module.exports.getSegmentsOnService = getSegmentsOnService;
 module.exports.getServiceSegmentPriorityRange = getServiceSegmentPriorityRange;
 module.exports.getUserConfig = getUserConfig;
@@ -476,7 +497,6 @@ module.exports.getBranchConfig = getBranchConfig;
 module.exports.getService = getService;
 module.exports.getServiceConfig = getServiceConfig;
 module.exports.getServiceConfigFromService = getServiceConfigFromService;
-module.exports.getCommonSettings = getCommonSettings;
 module.exports.Read = Read;
 module.exports.initialize = initialize;
 module.exports.configsCache = configsCache;

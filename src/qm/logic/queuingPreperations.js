@@ -15,7 +15,6 @@ function prepareAvailableActions(orgID, branchID, counterID) {
     var availableActions = new AvailableActions();
     try {
         let CurrentWindow = configurationService.getCounterConfig(counterID);
-		
         //Check for correct type
         if (CurrentWindow && (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing || CurrentWindow.Type_LV == enums.counterTypes.NoCallServing)) {
             let TransfToService0Enabled = false;
@@ -37,78 +36,42 @@ function prepareAvailableActions(orgID, branchID, counterID) {
             CounterData = output[1];
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
-            let userID = CounterData.userID;
-            let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
-            let TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_TRANSFER_TO_SERVICE);
-            if (TempString && TempString == "1") {
-                TransfToService0Enabled = true;
-            }
-            else {
-                TransfToService0Enabled = false;
-            }
-
-            TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_TRANSFER_BACK);
-            if (TempString && TempString == "1") {
-                CustomerReturn0Enabled = true;
-            }
-            TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_BREAK);
-            if (TempString && TempString == "1") {
-                tEnableBreak = true;
-            }
-
-            TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_TRANSFER_TO_WINDOW);
-            if (TempString && TempString == "1") {
-                TransfToCounter0Enabled = true;
-            }
-
-            TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_ADDING_SERVICES_PARAMETER);
-            if (TempString && TempString == "1") {
-                AddService0Enabled = true;
-            }
-
-            TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_CUSTOMER_HOLD);
-            if (TempString && TempString == "1") {
-                Hold0Enabled = true;
-            }
-
-            TempString = configurationService.getCommonSettings(branchID, constants.NEXT_DEBOUNCE_SECONDS);
-            if (TempString && TempString != "") {
-                NextDebounceSeconds = parseInt(TempString);
-            }
+            let TempString = 
+            TransfToService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_SERVICE);
 
 
-            TempString = configurationService.getCommonSettings(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
-            if (TempString && TempString != "") {
-                BreakNotification = parseInt(TempString);
-            }
+            CustomerReturn0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_BACK);
 
-            TempString = configurationService.getCommonSettings(branchID, constants.MAX_RECALL_TIMES);
-            if (TempString && TempString != "") {
-                MaxRecallTimes = parseInt(TempString);
-            }
+            tEnableBreak = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_BREAK);
 
-            TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
-            if (TempString && TempString == "1") {
-                availableActions.EnableTakingCustomerPhoto = true;
-            }
+            TransfToCounter0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_WINDOW);
+
+            AddService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_ADDING_SERVICES_PARAMETER);
+
+            Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
+
+            availableActions.EnableTakingCustomerPhoto = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
+
+
+            NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
+
+            BreakNotification = configurationService.getCommonSettingsInt(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
+
+            MaxRecallTimes = configurationService.getCommonSettingsInt(branchID, constants.MAX_RECALL_TIMES);
+
 
             let State = CurrentActivity.type;
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
                 //Serve Button
-                TempString = configurationService.getCommonSettings(branchID, constants.HIDE_SERVE_BUTTON);
-                if (TempString && TempString == "1") {
-                    availableActions.HideServeButton = true;
-                }
+                availableActions.HideServeButton = configurationService.getCommonSettingsBool(branchID, constants.HIDE_SERVE_BUTTON);
+               
 
                 //Serve Button
-                TempString = configurationService.getCommonSettings(branchID, constants.SHOW_SERVE_WITH_BUTTON);
-                if (TempString && TempString == "1") {
-                    availableActions.ShowServeWithButton = true;
-                }
+                availableActions.ShowServeWithButton  = configurationService.getCommonSettingsBool(branchID, constants.SHOW_SERVE_WITH_BUTTON);
 
                 //Check IF fINISH SERVING SHOULD BE ALLOWED
-                TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_FINISH_SERVING);
-                if (TempString && TempString == "1" && State == enums.EmployeeActiontypes.Serving) {
+                let tShowServeWithButton  = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_FINISH_SERVING);
+                if (tShowServeWithButton && State == enums.EmployeeActiontypes.Serving) {
                     availableActions.FinishAllowed = true;
                 }
 
@@ -160,9 +123,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     availableActions.EditCustomerInfoAllowed = true;
                 }
 
-
-                TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_IDENTIFING_IDENTIFIED_CUSTOMER);
-                var tEnableIdentifyingTheCustomerMultipleTimes = ((TempString && TempString == "1") ? true : false);
+                let tEnableIdentifyingTheCustomerMultipleTimes  = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_IDENTIFING_IDENTIFIED_CUSTOMER);
                 //TODO: Missing Identification service logic
                 if (availableActions.EditCustomerInfoAllowed && tEnableIdentifyingTheCustomerMultipleTimes) {
                     availableActions.IdentifyCustomerAllowed = true;

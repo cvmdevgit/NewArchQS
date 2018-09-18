@@ -30,7 +30,6 @@ class availableActions {
                 this.TransferBackAllowed = false;
                 this.IdentifyCustomerAllowed = false;
                 this.EditCustomerInfoAllowed = false;
-				
         }
 }
 module.exports = availableActions;
