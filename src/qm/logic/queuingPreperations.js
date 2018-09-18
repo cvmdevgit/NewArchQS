@@ -104,7 +104,18 @@ function setCustomerInfoRelatedSettings(branchID, CurrentState, availableActions
     }
 
 }
+function setRecallSettings(branchID, CurrentState, CurrentTransaction, availableActions) {
+    let MaxRecallTimes = 3;
+    MaxRecallTimes = configurationService.getCommonSettingsInt(branchID, constants.MAX_RECALL_TIMES);
+    if (CurrentState == enums.EmployeeActiontypes.Serving && CurrentTransaction != null && CurrentTransaction.recallNo < MaxRecallTimes) {
+        availableActions.RecallAllowed = true;
+    }
+}
 function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableActions) {
+    //Open Button
+    if (CurrentState != enums.EmployeeActiontypes.Serving && CurrentState != enums.EmployeeActiontypes.Ready && CurrentState != enums.EmployeeActiontypes.Processing && CurrentState != enums.EmployeeActiontypes.NoCallServing) {
+        availableActions.OpenAllowed = true;
+    }
     //Serve Button
     availableActions.HideServeButton = configurationService.getCommonSettingsBool(branchID, constants.HIDE_SERVE_BUTTON);
 
@@ -131,7 +142,6 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
     if (WindowListButtonsVisible && availableActions.HoldAllowed || (availableActions.TransferToServiceAllowed && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0) || availableActions.TransferToCounterAllowed) {
         availableActions.ListServeWithAllowed = true;
     }
-
 }
 
 
@@ -143,6 +153,9 @@ function setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActio
             availableActions.NextAllowed = true;
         }
         availableActions.NextEnabledAfter = 0;
+        if (CurrentWorkFlow.OverrideNextDebounceSeconds) {
+            availableActions.NextEnabledAfter = CurrentWorkFlow.NextDebounceSeconds;
+        }
         if (State == enums.EmployeeActiontypes.Serving || State == enums.EmployeeActiontypes.Processing) {
             availableActions.NextEnabledAfter = NextDebounceSeconds;
         }
@@ -161,9 +174,10 @@ function prepareAvailableActions(orgID, branchID, counterID) {
     var availableActions = new AvailableActions();
     try {
         let CurrentWindow = configurationService.getCounterConfig(counterID);
+        let CounterIsServingOrNoCall = (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing || CurrentWindow.Type_LV == enums.counterTypes.NoCallServing);
         //Check for correct type
-        if (CurrentWindow && (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing || CurrentWindow.Type_LV == enums.counterTypes.NoCallServing)) {
-            let MaxRecallTimes = 3;
+        if (CounterIsServingOrNoCall) {
+
             let CurrentWorkFlow
             let output = [];
             let CounterData;
@@ -176,7 +190,8 @@ function prepareAvailableActions(orgID, branchID, counterID) {
             let TempString;
 
             availableActions.EnableTakingCustomerPhoto = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
-            MaxRecallTimes = configurationService.getCommonSettingsInt(branchID, constants.MAX_RECALL_TIMES);
+
+
 
             let State = CurrentActivity.type;
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
@@ -192,10 +207,6 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     service_ID = CurrentTransaction.service_ID;
                     CurrentWorkFlow = WorkFlowManager.getWorkFlow(branchID, service_ID);
                     let serviceAvailableActions = WorkFlowManager.getServiceAvailableActions(branchID, service_ID);
-                    availableActions.NextEnabledAfter = 0;
-                    if (CurrentWorkFlow.OverrideNextDebounceSeconds) {
-                        availableActions.NextEnabledAfter = CurrentWorkFlow.NextDebounceSeconds;
-                    }
                     availableActions.AddServiceEnabledAfter = serviceAvailableActions.MinServiceTime;
                     //MaxAcceptableServiceTime
                     let serviceConfig = configurationService.getServiceConfigFromService(service_ID);
@@ -220,13 +231,9 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                 setCustomStateActions(orgID, branchID, State, availableActions);
 
                 if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
-                    if (State == enums.EmployeeActiontypes.Serving && CurrentTransaction != null && CurrentTransaction.RecallNo < MaxRecallTimes) {
-                        availableActions.RecallAllowed = true;
-                    }
-                    if (State != enums.EmployeeActiontypes.Serving && State != enums.EmployeeActiontypes.Ready && State != enums.EmployeeActiontypes.Processing && State != enums.EmployeeActiontypes.NoCallServing) {
-                        availableActions.OpenAllowed = true;
-                    }
-                    //Serve with settings
+                    //Set the recall setting
+                    setRecallSettings(branchID, State, CurrentTransaction, availableActions)
+                    //Serve with/ list serving settings
                     setServeWithSettings(branchID, CurrentWindow, State, availableActions);
                     //Automatic Transfer
                     setAutomaticTransferSettings(CurrentWorkFlow, availableActions);

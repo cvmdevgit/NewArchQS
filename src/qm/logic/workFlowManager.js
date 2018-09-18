@@ -614,7 +614,6 @@ function PrepareAddList(orgID, branchID, counterID) {
                             if (!segments) continue;
                         }
 
-
                         //Check Service validation
                         let serviceID = allocated_Queue[index];
                         let tmpServiceAvailableActions = getServiceAvailableActions(branchID, serviceID);

@@ -14,6 +14,7 @@ class rabbitMQClient {
         this.SubscribTopics = Topics;
         this.RPC_Queue = queueName;
         this.RPC_Queue_Reply = queueName + "_Reply_" + this.id;
+        this.RPC_Queue_Listener = queueName + "_BroadcastListener_" + this.id;
         this.connection;
         this.channel;
         this.MessageRecieveEmitter = new EmitterClass();
@@ -46,8 +47,6 @@ class rabbitMQClient {
         let that = this;
         return new Promise(function (resolve, reject) {
             try {
-
-
                 let channelItem = channels.find(function (x) {
                     return x.key == (that.RPC_Queue + "_" + that.keysString);
                 });
@@ -56,9 +55,10 @@ class rabbitMQClient {
                         conn.createChannel(function (err, ch) {
                             ch.assertExchange(QS_EXCHANGE, 'topic', { durable: false })
                             ch.assertQueue(that.RPC_Queue, { durable: false });
+                            ch.assertQueue(that.RPC_Queue_Listener, { durable: false });
                             if (that.SubscribTopics && that.SubscribTopics.length > 0) {
                                 for (let i = 0; i < that.SubscribTopics.length; i++) {
-                                    ch.bindQueue(that.RPC_Queue, QS_EXCHANGE, that.SubscribTopics[i]);
+                                    ch.bindQueue(that.RPC_Queue_Listener, QS_EXCHANGE, that.SubscribTopics[i]);
                                 }
                             }
                             ch.prefetch(1);
