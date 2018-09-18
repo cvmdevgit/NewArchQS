@@ -15,6 +15,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
     var availableActions = new AvailableActions();
     try {
         let CurrentWindow = configurationService.getCounterConfig(counterID);
+		
         //Check for correct type
         if (CurrentWindow && (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing || CurrentWindow.Type_LV == enums.counterTypes.NoCallServing)) {
             let TransfToService0Enabled = false;
