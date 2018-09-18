@@ -48,9 +48,7 @@ function filterCommonConfigs(ArrayOfEntities, BranchID, BranchConfigID) {
             return (value.BranchConfig_ID == null && value.QueueBranch_ID == null) || value.BranchConfig_ID == BranchConfigID || value.QueueBranch_ID == BranchID;
         });
     }
-    else {
-        return [];
-    }
+    return [];
 }
 
 //Populate branch cofigs
