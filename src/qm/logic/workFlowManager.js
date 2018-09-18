@@ -42,7 +42,7 @@ function getWorkFlow(branchID, service_ID) {
     }
     catch (error) {
         logger.logError(error);
-        return;
+        return new WorkFlow();
     }
 
 }
