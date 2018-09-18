@@ -89,6 +89,51 @@ function setHoldSettings(branchID, CurrentWorkFlow, availableActions) {
     let Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
     availableActions.HoldAllowed = Hold0Enabled && CurrentWorkFlow.IsHoldEnabled;
 }
+function setCustomerInfoRelatedSettings(branchID, CurrentState, availableActions) {
+    let TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_EDITING_SERVED_CUSTOMER_INFO);
+    if (TempString && TempString == "1" && CurrentState == enums.EmployeeActiontypes.Serving) {
+
+        //TODO: Missing customer information logic
+        availableActions.EditCustomerInfoAllowed = true;
+    }
+
+    let tEnableIdentifyingTheCustomerMultipleTimes = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_IDENTIFING_IDENTIFIED_CUSTOMER);
+    //TODO: Missing Identification service logic
+    if (availableActions.EditCustomerInfoAllowed && tEnableIdentifyingTheCustomerMultipleTimes) {
+        availableActions.IdentifyCustomerAllowed = true;
+    }
+
+}
+function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableActions) {
+    //Serve Button
+    availableActions.HideServeButton = configurationService.getCommonSettingsBool(branchID, constants.HIDE_SERVE_BUTTON);
+
+    let WindowListButtonsVisible = false;
+    //TODO: THe list serving counter
+    if (CurrentWindow.Type_LV == enums.counterTypes.NoCallServing) {
+        WindowListButtonsVisible = true;
+    }
+    else {
+        let Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
+        if (Hold0Enabled) {
+            WindowListButtonsVisible = true;
+        }
+    }
+    //ListServingAllowed
+    if (WindowListButtonsVisible && (CurrentState == enums.EmployeeActiontypes.NotReady || CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Custom)) {
+        availableActions.ListServeAllowed = true;
+
+        //If (Serve) button was hidden then keep (Serve With) button enabled
+        if (availableActions.HideServeButton) {
+            availableActions.ListServeWithAllowed = true;
+        }
+    }
+    if (WindowListButtonsVisible && availableActions.HoldAllowed || (availableActions.TransferToServiceAllowed && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0) || availableActions.TransferToCounterAllowed) {
+        availableActions.ListServeWithAllowed = true;
+    }
+
+}
+
 
 function setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions) {
     if (State == enums.EmployeeActiontypes.Serving) {
@@ -135,8 +180,6 @@ function prepareAvailableActions(orgID, branchID, counterID) {
 
             let State = CurrentActivity.type;
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
-                //Serve Button
-                availableActions.HideServeButton = configurationService.getCommonSettingsBool(branchID, constants.HIDE_SERVE_BUTTON);
 
                 //Serve Button
                 availableActions.ShowServeWithButton = configurationService.getCommonSettingsBool(branchID, constants.SHOW_SERVE_WITH_BUTTON);
@@ -166,18 +209,8 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     setTransferToServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions);
                 }
 
-                TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_EDITING_SERVED_CUSTOMER_INFO);
-                if (TempString && TempString == "1" && State == enums.EmployeeActiontypes.Serving) {
-
-                    //TODO: Missing customer information logic
-                    availableActions.EditCustomerInfoAllowed = true;
-                }
-
-                let tEnableIdentifyingTheCustomerMultipleTimes = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_IDENTIFING_IDENTIFIED_CUSTOMER);
-                //TODO: Missing Identification service logic
-                if (availableActions.EditCustomerInfoAllowed && tEnableIdentifyingTheCustomerMultipleTimes) {
-                    availableActions.IdentifyCustomerAllowed = true;
-                }
+                //Set customer Info Settings
+                setCustomerInfoRelatedSettings(branchID, State, availableActions);
 
                 //Set Next and debounce settings
                 setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions);
@@ -186,39 +219,15 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                 //Set Custom Settings
                 setCustomStateActions(orgID, branchID, State, availableActions);
 
-
-                let WindowListButtonsVisible = false;
-                //TODO: THe list serving counter
-                if (CurrentWindow.Type_LV == enums.counterTypes.NoCallServing) {
-                    if (State != enums.EmployeeActiontypes.Serving && State != enums.EmployeeActiontypes.Ready && State != enums.EmployeeActiontypes.Processing && State != enums.EmployeeActiontypes.NoCallServing) {
-                        availableActions.OpenAllowed = true;
-                    }
-                    WindowListButtonsVisible = true;
-                }
-                else {
-                    if (Hold0Enabled) {
-                        WindowListButtonsVisible = true;
-                    }
-                }
-
                 if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
-                    //ListServingAllowed
-                    if (WindowListButtonsVisible && (State == enums.EmployeeActiontypes.NotReady || State == enums.EmployeeActiontypes.Serving || State == enums.EmployeeActiontypes.Processing || State == enums.EmployeeActiontypes.Custom)) {
-                        availableActions.ListServeAllowed = true;
-
-                        //If (Serve) button was hidden then keep (Serve With) button enabled
-                        if (availableActions.HideServeButton) {
-                            availableActions.ListServeWithAllowed = true;
-                        }
-                    }
-                    if (WindowListButtonsVisible && availableActions.HoldAllowed || (availableActions.TransferToServiceAllowed && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0) || availableActions.TransferToCounterAllowed) {
-                        availableActions.ListServeWithAllowed = true;
-                    }
-
-
                     if (State == enums.EmployeeActiontypes.Serving && CurrentTransaction != null && CurrentTransaction.RecallNo < MaxRecallTimes) {
                         availableActions.RecallAllowed = true;
                     }
+                    if (State != enums.EmployeeActiontypes.Serving && State != enums.EmployeeActiontypes.Ready && State != enums.EmployeeActiontypes.Processing && State != enums.EmployeeActiontypes.NoCallServing) {
+                        availableActions.OpenAllowed = true;
+                    }
+                    //Serve with settings
+                    setServeWithSettings(branchID, CurrentWindow, State, availableActions);
                     //Automatic Transfer
                     setAutomaticTransferSettings(CurrentWorkFlow, availableActions);
                     setPreServiceSettings(CurrentWorkFlow, availableActions);
