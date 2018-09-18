@@ -1,5 +1,6 @@
 var logger = require("../../common/logger");
 var common = require("../../common/common");
+var constants = require("../../common/constants");
 var enums = require("../../common/enums");
 var transaction = require("../data/transaction");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
@@ -9,6 +10,7 @@ var TicketSeqData = require("../data/ticketSeqData");
 var idGenerator = require("../localRepositories/idGenerator");
 var counterData = require("../data/counterData");
 var statisticsManager = require("./statisticsManager");
+var workFlowManager = require("./workFlowManager");
 const Separators = ["", " ", "-", "/", "."];
 
 
@@ -712,67 +714,8 @@ function isCounterWorking(counter) {
         return false;
     }
 }
-function MergeAllocationsArrays(allocated_all_segment, allocated_segment) {
-    try {
-        let MergedArray;
-        //If the two arrays are filled
-        if (allocated_all_segment && allocated_segment) {
-            MergedArray = allocated_all_segment.concat(allocated_segment.filter(function (item) {
-                return allocated_all_segment.indexOf(item) < 0;
-            }));
-            return MergedArray
-        }
-        if (allocated_all_segment) {
-            MergedArray = allocated_all_segment;
-        }
-        else {
-            MergedArray = allocated_segment;
-        }
-        return MergedArray
-    }
-    catch (error) {
-        logger.logError(error);
-        return [];
-    }
-}
-function getAllocatedUsersOnSegment(branch, Segment_ID) {
-    try {
-        let ServingUserIDs = branch.usersAllocations.filter(function (user) {
-            return user.Serving == "1";
-        }).map(user => user.User_ID);
 
-        //Users with all segments set
-        let allocated_all_segment_users = configurationService.configsCache.users.filter(function (user) {
-            return user.SegmentAllocationType == enums.SegmentAllocationType.SelectAll && ServingUserIDs.indexOf(user.ID) > -1;
-        }).map(user => user.ID);
 
-        //Get Segment Allocation from allocation table
-        let allocated_segment_users = branch.segmentsAllocations.filter(function (allocation) {
-            return allocation.Segment_ID == Segment_ID && allocation.User_ID && ServingUserIDs.indexOf(user.ID) > -1;
-        }).map(allocation => allocation.User_ID);
-
-        //Merge the 2 arrays to get one users array with this segment allocated
-        let allocated_usersOnSegments = MergeAllocationsArrays(allocated_all_segment_users, allocated_segment_users);
-        return allocated_usersOnSegments;
-    }
-    catch (error) {
-        logger.logError(error);
-        return [];
-    }
-}
-function getAllocatedUserssOnService(branch, Service_ID) {
-    try {
-        //Get users with this service allocated
-        let allocated_usersOnServices = branch.servicesAllocations.filter(function (allocation) {
-            return allocation.Service_ID == Service_ID && allocation.User_ID;
-        }).map(allocation => allocation.User_ID);
-        return allocated_usersOnServices;
-    }
-    catch (error) {
-        logger.logError(error);
-        return [];
-    }
-}
 function getWorkingCounters(branchesData, counteronHallIDs) {
     try {
         let OpenedCounters;
@@ -802,10 +745,10 @@ function getHallsforUsers(branch, branchesData, Service_ID, Segment_ID) {
         let hallsData = [];
 
         //Get users with this segment allocated
-        let allocated_usersOnSegments = getAllocatedUsersOnSegment(branch, Segment_ID);
+        let allocated_usersOnSegments = workFlowManager.getAllocatedUsersOnSegment(branch, Segment_ID);
 
         //Get users with this service allocated
-        let allocated_usersOnServices = getAllocatedUserssOnService(branch, Service_ID);
+        let allocated_usersOnServices = workFlowManager.getAllocatedUserssOnService(branch, Service_ID);
 
         //Get the halls that can serve ticket
         if (allocated_usersOnServices && allocated_usersOnServices.length > 0 && allocated_usersOnSegments && allocated_usersOnSegments.length > 0) {
@@ -840,49 +783,16 @@ function getHallsforUsers(branch, branchesData, Service_ID, Segment_ID) {
         return [];
     }
 }
-function getAllocatedCountersOnSegment(branch, Segment_ID) {
-    try {
-        //counters with all segments set
-        let allocated_all_segment_counters = branch.counters.filter(function (value) {
-            return value.SegmentAllocationType == enums.SegmentAllocationType.SelectAll;
-        }).map(counter => counter.ID);
 
-        //Get Segment Allocation from allocation table
-        let allocated_segment_counters = branch.segmentsAllocations.filter(function (allocation) {
-            return allocation.Segment_ID == Segment_ID && allocation.Counter_ID;
-        }).map(allocation => allocation.Counter_ID);
-
-        //Merge the 2 arrays to get one counters array with this segment allocated
-        let allocated_countersOnSegments = MergeAllocationsArrays(allocated_all_segment_counters, allocated_segment_counters);
-        return allocated_countersOnSegments;
-    }
-    catch (error) {
-        logger.logError(error);
-        return [];
-    }
-}
-function getAllocatedCountersOnService(branch, Service_ID) {
-    try {
-        //Get Counters with this service allocated
-        let allocated_countersOnServices = branch.servicesAllocations.filter(function (allocation) {
-            return allocation.Service_ID == Service_ID && allocation.Counter_ID;
-        }).map(allocation => allocation.Counter_ID);
-        return allocated_countersOnServices;
-    }
-    catch (error) {
-        logger.logError(error);
-        return [];
-    }
-}
 function getHallsforCounters(branch, branchesData, Service_ID, Segment_ID) {
     try {
         let hallsData = [];
 
         //Get Counters can serve this segment
-        let allocated_countersOnSegments = getAllocatedCountersOnSegment(branch, Segment_ID);
+        let allocated_countersOnSegments = workFlowManager.getAllocatedCountersOnSegment(branch, Segment_ID);
 
         //Get Counters with this service allocated
-        let allocated_countersOnServices = getAllocatedCountersOnService(branch, Service_ID);
+        let allocated_countersOnServices = workFlowManager.getAllocatedCountersOnService(branch, Service_ID);
 
         //Get the halls that can serve ticket
         if (allocated_countersOnServices && allocated_countersOnServices.length > 0 && allocated_countersOnSegments && allocated_countersOnSegments.length > 0) {
@@ -920,7 +830,7 @@ function getHallsforCounters(branch, branchesData, Service_ID, Segment_ID) {
 function getHallsAllocatedonServiceSegment(Branch, BranchesData, Service_ID, Segment_ID) {
     try {
         let hallsData = [];
-        let AllocationType = configurationService.getCommonSettings(Branch.ID, common.ServiceAllocationTypeKey);
+        let AllocationType = configurationService.getCommonSettings(Branch.ID, constants.ServiceAllocationTypeKey);
         if (AllocationType == enums.AllocationTypes.Counter) {
             hallsData = getHallsforCounters(Branch, BranchesData, Service_ID, Segment_ID);
         }
@@ -1038,7 +948,7 @@ function SpiltSequenceRangeOverHall(BracnhData, Allocated_Halls, All_Halls, Min_
         let RangeLength = 0;
         let HallIndex = 0;
         let t_Min_TicketNumber = Min_TicketNumber;
-        let EnableSplitRangeOverAllocatedHalls = configurationService.getCommonSettings(BracnhData.id, common.EnableSplitRangeOverAllocatedHalls);
+        let EnableSplitRangeOverAllocatedHalls = configurationService.getCommonSettings(BracnhData.id, constants.EnableSplitRangeOverAllocatedHalls);
         if (EnableSplitRangeOverAllocatedHalls == "1") {
             //Split them accross allocated halls 
             RangeLength = (Max_TicketNumber - t_Min_TicketNumber) / Allocated_Halls.length;
@@ -1078,7 +988,7 @@ function getTransactionSequence(PriorityRange, transaction) {
             }
 
             //Check the split to get the min max depending on hall ID
-            let EnableHallSlipRange = configurationService.getCommonSettings(BracnhData.id, common.EnableHallSlipRange);
+            let EnableHallSlipRange = configurationService.getCommonSettings(BracnhData.id, constants.EnableHallSlipRange);
             if (EnableHallSlipRange == "1") {
                 SpiltSequenceRangeOverHall(BracnhData, Allocated_Halls, All_Halls, Min_TicketNumber, Max_TicketNumber);
             }

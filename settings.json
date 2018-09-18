@@ -1,1 +1,1 @@
-{"OrgID":"1","ServerConnectionParameters":{"Username":"SystemUser","Password":"123","ServerURL":"http://Localhost:8080/CVMServer"},"dbType":"sqllite","dbConnection":"./db/queuing.db","sqldbConnection":{"user":"sa","password":"sedco@123","server":"majd","database":"new"},"mock":false}
+{"OrgID":"1","ServerConnectionParameters":{"Username":"SystemUser","Password":"123","ServerURL":"http://Localhost:8080/CVMServer"},"dbType":"sql","dbConnection":"./db/queuing.db","sqldbConnection":{"user":"sa","password":"sedco@123","server":"majd","database":"new"},"mock":false}

@@ -33,6 +33,8 @@ function getQSRequestObject(MessagePayload) {
         t_requestPayload.orgid = MessagePayload["orgid"];
         t_requestPayload.transactionid = MessagePayload["transactionid"];
         t_requestPayload.holdreasonid = MessagePayload["holdreasonid"];
+        t_requestPayload.loginName = MessagePayload["loginName"];
+        t_requestPayload.password = MessagePayload["password"];
         return t_requestPayload;
     }
     catch (error) {

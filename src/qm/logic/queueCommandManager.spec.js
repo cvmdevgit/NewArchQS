@@ -74,6 +74,22 @@ describe('Queuing Command Manager Test', function () {
         let result = await queueCommandManager.initialize();
         (result === common.success).should.true();
     });
+
+    it('User Login successfully', async function () {
+        let _message = new message();
+        _message.payload={
+            orgid: OrgID,
+            counterid: CounterID,
+            branchid: BranchID,
+            loginName: "root",
+            password: "123"
+        };
+
+
+        let result = await queueCommandManager.userLogin(_message);
+        (result === common.success).should.true();
+    });
+
     it('Issue Ticket segmentid: "325" serviceid: "364" branchid: "106" successfully', async function () {
         let _message = new message();
         _message.payload=ticketInfo;
@@ -230,5 +246,4 @@ describe('Queuing Command Manager Test', function () {
         let result = await queueCommandManager.counterOpen(_message);
         (result === common.not_valid).should.true();
     });
-
 });

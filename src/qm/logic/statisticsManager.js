@@ -2,14 +2,16 @@ var repositoriesManager = require("../localRepositories/repositoriesManager");
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var events = require("../../common/events");
 var transaction = require("../data/transaction");
 var branchStatisticsData = require("../data/branchStatisticsData");
 var transactionStatisticsData = require("../data/transactionStatisticsData");
 var statisticsData = require("../data/statisticsData");
 var configurationService = require("../configurations/configurationService");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
-var localMessagingService = require('../../localMessagingService');
 var responsePayload = require('../messagePayload/responsePayload');
+var broadcastTopic = "statistics.broadcast";
+var ModuleName = "Statistics"
 var branches_statisticsData = [];
 const UpdateTypes = {
     Add: 0,
@@ -299,6 +301,7 @@ var initialize = async function () {
             );
 
             await initializeStatisticsFromTransactions(transactionsData);
+            await repositoriesManager.commit();
         }
         await repositoriesManager.entitiesRepo.clearEntities();
         return common.success;
@@ -416,8 +419,8 @@ var GetSpecificStatistics = function (FilterStatistics) {
 function broadcastStatistics(BranchID)
 {
     try{
-        var message = localMessagingService.newMessage("*");
-        this.topicName = this.ModuleName + "/branchStatistics";
+        var message = new responsePayload() ;
+        message.topicName = ModuleName + "/branchStatistics";
         let Branchstatistics = getBranchStatisticsData(BranchID);
         message.result = common.success;
         message.payload = new responsePayload();
@@ -427,8 +430,7 @@ function broadcastStatistics(BranchID)
         else {
             message.payload.statisticsInfo = [];
         }
-        
-        localMessagingService.queueMessage(message);
+        events.broadcastMessage.emit('event',broadcastTopic, message);
         return common.success;
     }
     catch (error) {

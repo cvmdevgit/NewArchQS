@@ -11,7 +11,7 @@ var transaction = require("../data/transaction");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
 var statisticsManager = require("./statisticsManager");
 var dataPayloadManager = require("../messagePayload/dataPayloadManager");
-var localMessagingService = require('../../localMessagingService');
+var ModuleName = "Queuing"
 var initialized = false;
 
 
@@ -21,7 +21,7 @@ var FinishingCommand = async function (BranchID) {
         statisticsManager.broadcastStatistics(BranchID);
         //Commit DB Actions
         await repositoriesManager.commit();
-        
+
     }
     catch (error) {
         logger.logError(error);
@@ -241,6 +241,26 @@ var counterOpen = async function (message) {
     }
 };
 
+//User Login
+var userLogin = function (message) {
+    try {
+        let result = common.error;
+        let requestPayload = dataPayloadManager.getQSRequestObject(message.payload);
+        let OrgID = requestPayload.orgid;
+        let BranchID = requestPayload.branchid;
+        let CounterID = requestPayload.counterid;
+        let loginName = requestPayload.loginName;
+        let password = requestPayload.password;
+        let Transactions = [];
+        let CountersInfo = [];
+        result = userActivityManager.UserLogin(OrgID, BranchID, CounterID, loginName, password)
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
 
 //Transfer ticket to counter
 var counterTransferToCounter = function (TransferInfo) {
@@ -249,12 +269,6 @@ var counterTransferToCounter = function (TransferInfo) {
 
 //Transfer ticket to another service
 var counterTransferToService = function (TransferInfo) {
-    return true;
-};
-
-
-//User Login
-var userLogin = function (loginInfo) {
     return true;
 };
 
@@ -326,25 +340,24 @@ var processCommand = async function (message) {
         let result = common.error;
         if (message) {
             //Remove Module Name
-            var command = message.topicName.replace(this.ModuleName + "/", "");
+            var command = message.topicName.replace(ModuleName + "/", "");
             switch (command) {
                 case enums.commands.IssueTicket:
-                    result = await this.issueTicket(message); break;
+                    result = await issueTicket(message); break;
                 case enums.commands.Next:
-                    result = await this.counterNext(message);break;
+                    result = await counterNext(message); break;
                 case enums.commands.Hold:
-                    result = await this.counterHoldCustomer(message);break;
+                    result = await counterHoldCustomer(message); break;
                 case enums.commands.ServeCustomer:
-                    result = await this.counterServeCustomer(message);break;
+                    result = await counterServeCustomer(message); break;
                 case enums.commands.Break:
-                    result = await this.counterBreak(message);break;
+                    result = await counterBreak(message); break;
                 case enums.commands.Open:
-                    result = await this.counterOpen(message);break;
+                    result = await counterOpen(message); break;
                 case enums.commands.AddService:
-                    result = await this.addService(message);break;
+                    result = await addService(message); break;
             }
         }
-        localMessagingService.sendReply(message);
         return result;
     }
     catch (error) {
@@ -390,7 +403,9 @@ var stop = async function () {
     }
 };
 
-module.exports.ModuleName = "Queuing";
+//rabbitMQClient.receive(processCommand);
+
+module.exports.ModuleName = ModuleName;
 module.exports.stop = stop;
 module.exports.initialize = initialize;
 module.exports.initialized = initialized;

@@ -1,4 +1,5 @@
 "use strict";
+var constants = require("../../common/constants");
 var configurationService = require("./configurationService");
 var should = require("should");
 var mocha = require("mocha");
@@ -10,7 +11,6 @@ const ServiceID = "364";
 const ServiceConfig_ID= "363";
 const Invalid_ServiceConfig_ID= "33333";
 const branchid = "106";
-const AutoNext = "EnableAutoNext";
 should.toString();
 
 /*
@@ -53,7 +53,7 @@ describe('Configration Service', function () {
         (ServiceConfig != undefined).should.true();
     });
     it('Get common Config successfully', async function () {
-        let commonConfig = await configurationService.getCommonSettings(branchid,AutoNext);
+        let commonConfig = await configurationService.getCommonSettings(branchid,constants.EnableAutoNext);
         (commonConfig != undefined).should.true();
     });    
     it('Read Branches successfully', async function () {

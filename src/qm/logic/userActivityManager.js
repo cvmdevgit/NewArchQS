@@ -1,11 +1,13 @@
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var crypto = require("../../common/crypto");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
 var dataService = require("../data/dataService");
 var userActivity = require("../data/userActivity");
 var idGenerator = require("../localRepositories/idGenerator");
 var configurationService = require("../configurations/configurationService");
+var queuingPreperations = require("./queuingPreperations");
 
 var updateUserAvitivityInData = function (BracnhData, userActivity) {
     try {
@@ -28,6 +30,46 @@ var updateUserAvitivityInData = function (BracnhData, userActivity) {
         return common.error;
     }
 };
+
+var UserLogin = function (OrgID, BranchID, CounterID, loginName, password, clientType) {
+    try {
+
+        var user = configurationService.configsCache.users.find(function (user) {
+            return (user.OrgID == OrgID && user.LoginName == loginName)
+        });
+        //Check User name
+        if (!user) {
+            return common.error;
+        }
+
+        //Check Passowrd
+        if (crypto.Decrypt(user.Password) != password) {
+            return common.error;
+        }
+
+        //Get Branch Data
+        let BracnhData = dataService.getBranchData(BranchID);
+        let CounterData = BracnhData.countersData.find(function (counter) {
+            return counter.id == CounterID
+        });
+        //Error if the counter is not correct
+        if (!CounterData) {
+            return common.error;
+
+        }
+        if (!CounterData.currentState) {
+            result = InitializeCounterActivity(OrgID, BranchID, CounterData, enums.EmployeeActiontypes.NotReady);
+        }
+        CounterData.currentState.user_ID = user.ID;
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+
+};
+
 //Update Activity
 var UpdateActivity = function (userActivity) {
     try {
@@ -244,6 +286,7 @@ var ChangeCurrentCounterStateForOpen = function (errors, OrgID, BranchID, Counte
         }
 
         CounterData.currentState = CurrentActivity;
+        CounterData.availableActions = queuingPreperations.prepareAvailableActions(OrgID, BranchID, CounterID);
         CountersInfo.push(CurrentActivity);
         return common.success;
     }
@@ -415,6 +458,7 @@ var ChangeCurrentCounterStateForBreak = function (errors, OrgID, BranchID, Count
 
         CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.EmployeeActiontypes.Break);
         CounterData.currentState = CurrentActivity;
+        CounterData.availableActions = queuingPreperations.prepareAvailableActions(OrgID, BranchID, CounterID);
         CountersInfo.push(CurrentActivity);
         return common.success;
     }
@@ -457,7 +501,7 @@ var updateServingUserActivity = function (OrgID, BranchID, CounterData, CurrentA
         else {
             if (CurrentActivity.type != enums.EmployeeActiontypes.Ready) {
                 CloseActivity(CurrentActivity);
-                CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.EmployeeActiontypes.Ready);
+                CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.EmployeeActiontypes.Ready);
             }
             else {
                 CurrentActivity = UpdateActionTime(CurrentActivity);
@@ -491,6 +535,7 @@ var ChangeCurrentCounterStateForNext = function (errors, OrgID, BranchID, Counte
         }
 
         CounterData.currentState = CurrentActivity;
+        CounterData.availableActions = queuingPreperations.prepareAvailableActions(OrgID, BranchID, CounterID);
         CountersInfo.push(CurrentActivity);
         return common.success;
     }
@@ -501,7 +546,7 @@ var ChangeCurrentCounterStateForNext = function (errors, OrgID, BranchID, Counte
     }
 };
 
-
+module.exports.UserLogin = UserLogin;
 module.exports.CounterValidationForHold = CounterValidationForHold;
 module.exports.isCounterValidForAutoNext = isCounterValidForAutoNext;
 module.exports.CounterValidationForNext = CounterValidationForNext;

@@ -324,6 +324,10 @@ var stop = async function () {
     }
 };
 
+
+module.exports.getCurrentActivity = getCurrentActivity;
+module.exports.getCurrentTransaction = getCurrentTransaction;
+
 module.exports.getBranchData = getBranchData;
 module.exports.getHeldCustomers = getHeldCustomers;
 module.exports.getCounterData = getCounterData;

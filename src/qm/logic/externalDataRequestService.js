@@ -6,8 +6,7 @@ var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
 var statisticsManager = require("./statisticsManager");
 var responsePayload = require("../messagePayload/responsePayload");
-
-var localMessagingService = require('../../localMessagingService');
+var ModuleName = "ExternalData";
 //Get counter status (current ticket and state)
 function getCounterStatus(message) {
     try {
@@ -71,7 +70,7 @@ var getData = async function (message) {
     try {
         let result = common.error;
         if (message) {
-            var command = message.topicName.replace(this.ModuleName + "/", "");
+            var command = message.topicName.replace(ModuleName + "/", "");
             switch (command) {
                 case enums.commands.Read:
                     result = await Read(message.payload);
@@ -89,7 +88,6 @@ var getData = async function (message) {
                     result = common.error;
             }
         }
-        localMessagingService.sendReply(message);
         return result;
     }
     catch (error) {
@@ -98,5 +96,5 @@ var getData = async function (message) {
     }
 };
 
-module.exports.ModuleName = "ExternalData";
+module.exports.ModuleName = ModuleName;
 module.exports.getData = getData;

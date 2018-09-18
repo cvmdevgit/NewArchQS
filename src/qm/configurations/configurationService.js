@@ -108,6 +108,15 @@ var getCommonSettings = function (BranchID, Key) {
     }
 };
 
+function getUserConfig(UserID) {
+    //counter Config
+    let counter = configsCache.users.find(function (value) {
+        return value.ID == UserID;
+    }
+    );
+    return counter;
+}
+
 function getCounterConfig(CounterID) {
     //counter Config
     let counter = configsCache.counters.find(function (value) {
@@ -350,6 +359,42 @@ var Read = function (apiMessagePayLoad) {
     }
 };
 
+var getServiceSegmentPriorityRange = function (SegmentID, ServiceID) {
+    try {
+        let serviceSegmentPriorityRange = configsCache.serviceSegmentPriorityRanges.find(function (value) {
+            return value.Segment_ID == SegmentID && value.Service_ID == ServiceID;
+        }
+        );
+        return serviceSegmentPriorityRange;
+    }
+    catch (error) {
+        logger.logError(error);
+        return;
+    }
+};
+
+var getSegmentsOnService = function (ServiceID) {
+    let Segments;
+    try {
+        let serviceSegmentPriorityRanges = configsCache.serviceSegmentPriorityRanges.filter(function (value) {
+            return value.Service_ID == ServiceID;
+        }
+        );
+        if (serviceSegmentPriorityRanges) {
+            let SegmentIDs = serviceSegmentPriorityRanges.map(PriorityRange => PriorityRange.Segment_ID);
+            Segments = configsCache.segments.filter(function (value) {
+                return SegmentIDs.indexOf(value.ID) > -1;
+            }
+            );
+        }
+        return Segments;
+    }
+    catch (error) {
+        logger.logError(error);
+        return;
+    }
+};
+
 var getService = function (ServiceID) {
     return find(configsCache.services, ServiceID);
 };
@@ -425,7 +470,9 @@ var initialize = async function () {
         return common.error;
     }
 };
-
+module.exports.getSegmentsOnService = getSegmentsOnService;
+module.exports.getServiceSegmentPriorityRange = getServiceSegmentPriorityRange;
+module.exports.getUserConfig = getUserConfig;
 module.exports.getCounterConfig = getCounterConfig;
 module.exports.getBranchConfig = getBranchConfig;
 module.exports.getService = getService;

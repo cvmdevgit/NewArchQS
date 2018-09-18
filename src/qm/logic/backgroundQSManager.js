@@ -2,6 +2,7 @@
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var constants  = require("../../common/constants");
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
 var transactionManager = require("../logic/transactionManager");
@@ -64,7 +65,7 @@ var automaticNext = async function () {
             if (dataService.branchesData && dataService.branchesData.length > 0) {
                 for (let iBranch = 0; iBranch < dataService.branchesData.length; iBranch++) {
                     let branchData = dataService.branchesData[iBranch];
-                    let EnableAutoNext = configurationService.getCommonSettings(branchData.id, "EnableAutoNext");
+                    let EnableAutoNext = configurationService.getCommonSettings(branchData.id, constants.EnableAutoNext);
                     if (EnableAutoNext == "1") {
                         performAutoNextForBranch(branchData);
                     }
