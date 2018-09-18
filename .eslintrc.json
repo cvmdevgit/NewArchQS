@@ -1,0 +1,37 @@
+{
+    "env": {
+        "browser": true,
+        "commonjs": true,
+        "es6": true,
+        "node": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaFeatures": {
+            "jsx": true
+        },
+        "sourceType": "module",
+        "ecmaVersion": 2017
+    },
+    "rules": {
+        "no-unused-vars": 1,
+        "complexity": [
+            2,
+            20
+        ],
+        "no-console": 1,
+        "indent": [
+            "off",
+            4
+        ],
+        "linebreak-style": 0,
+        "quotes": [
+            "off",
+            "double"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ]
+    }
+}

@@ -1,0 +1,12 @@
+instrumentation:
+    root: src
+    extensions:
+        - .js
+    default-excludes: true
+    excludes: ['**/customer/**',
+    '**/dataMessage/**',
+    '**/configurations/**_config.js',
+    '**/configurations/**_Config.js', 
+    '**/routes/**', '**/TestAPI/**',
+    '**/public/**','src/app.js',
+    'src/communicationEndPoint.js']
