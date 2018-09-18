@@ -10,6 +10,46 @@ var dataService = require("../data/dataService");
 var AvailableActions = require("../data/availableActions");
 var WorkFlowManager = require("./workFlowManager");
 
+function setPreServiceSettings(CurrentWorkFlow, availableActions) {
+    //Add PreService
+    if (CurrentWorkFlow && CurrentWorkFlow.IsAddPreServiceEnabled == true) {
+        availableActions.AddPreServiceAllowed = true;
+        availableActions.AddPreServiceID = CurrentWorkFlow.AddPreServiceID;
+    }
+
+    //Add PreService on Transfer to Service
+    if (CurrentWorkFlow && CurrentWorkFlow.IsAddPreServiceOnTransferToServiceEnabled == true) {
+        availableActions.AddPreServiceOnTransferToServiceAllowed = true;
+        availableActions.AddPreServiceOnTransferID = CurrentWorkFlow.AddPreServiceOnTransferID;
+    }
+}
+function setAutomaticTransferSettings(CurrentWorkFlow, availableActions) {
+    //Automatic Transfer
+    if (CurrentWorkFlow && CurrentWorkFlow.IsAutomaticTransferToServiceEnabled == true && availableActions.TransferToServiceAllowed == true && CurrentWorkFlow.IsNextEnabled == true) {
+        availableActions.AutomaticTransferToServiceAllowed = true;
+    }
+
+
+    if (CurrentWorkFlow && CurrentWorkFlow.AutomaticTransferToServiceID && CurrentWorkFlow.AutomaticTransferToServiceID != "") {
+        availableActions.AutomaticTransferToServiceID = availableActions.TransferServicesIDs.find(function (ID) {
+            return ID == CurrentWorkFlow.AutomaticTransferToServiceID
+        });
+    }
+}
+function setCustomStateActions(orgID, branchID, CurrentState, availableActions) {
+    let TempString = configurationService.getCommonSettings(branchID, constants.CUSTOM_STATE_SETTINGS);
+    if (TempString != null && TempString.startsWith("1") && (CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Ready || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Break || CurrentState == enums.EmployeeActiontypes.NoCallServing)) {
+        availableActions.CustomStateAllowed = true;
+    }
+}
+function setBreakActions(orgID, branchID, CurrentState, availableActions) {
+    let tEnableBreak = false;
+    tEnableBreak = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_BREAK);
+    if (tEnableBreak && (CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Ready || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Custom || CurrentState == enums.EmployeeActiontypes.NoCallServing)) {
+        availableActions.BreakAllowed = true;
+    }
+
+}
 
 function prepareAvailableActions(orgID, branchID, counterID) {
     var availableActions = new AvailableActions();
@@ -19,7 +59,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
         if (CurrentWindow && (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing || CurrentWindow.Type_LV == enums.counterTypes.NoCallServing)) {
             let TransfToService0Enabled = false;
             let CustomerReturn0Enabled = false;
-            let tEnableBreak = false;
+
             let TransfToCounter0Enabled = false;
             let AddService0Enabled = false;
             let Hold0Enabled = false;
@@ -36,13 +76,12 @@ function prepareAvailableActions(orgID, branchID, counterID) {
             CounterData = output[1];
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
-            let TempString = 
+            let TempString;
             TransfToService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_SERVICE);
-
 
             CustomerReturn0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_BACK);
 
-            tEnableBreak = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_BREAK);
+
 
             TransfToCounter0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_WINDOW);
 
@@ -51,7 +90,6 @@ function prepareAvailableActions(orgID, branchID, counterID) {
             Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
 
             availableActions.EnableTakingCustomerPhoto = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
-
 
             NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
 
@@ -64,13 +102,13 @@ function prepareAvailableActions(orgID, branchID, counterID) {
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
                 //Serve Button
                 availableActions.HideServeButton = configurationService.getCommonSettingsBool(branchID, constants.HIDE_SERVE_BUTTON);
-               
+
 
                 //Serve Button
-                availableActions.ShowServeWithButton  = configurationService.getCommonSettingsBool(branchID, constants.SHOW_SERVE_WITH_BUTTON);
+                availableActions.ShowServeWithButton = configurationService.getCommonSettingsBool(branchID, constants.SHOW_SERVE_WITH_BUTTON);
 
                 //Check IF fINISH SERVING SHOULD BE ALLOWED
-                let tShowServeWithButton  = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_FINISH_SERVING);
+                let tShowServeWithButton = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_FINISH_SERVING);
                 if (tShowServeWithButton && State == enums.EmployeeActiontypes.Serving) {
                     availableActions.FinishAllowed = true;
                 }
@@ -123,7 +161,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     availableActions.EditCustomerInfoAllowed = true;
                 }
 
-                let tEnableIdentifyingTheCustomerMultipleTimes  = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_IDENTIFING_IDENTIFIED_CUSTOMER);
+                let tEnableIdentifyingTheCustomerMultipleTimes = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_IDENTIFING_IDENTIFIED_CUSTOMER);
                 //TODO: Missing Identification service logic
                 if (availableActions.EditCustomerInfoAllowed && tEnableIdentifyingTheCustomerMultipleTimes) {
                     availableActions.IdentifyCustomerAllowed = true;
@@ -150,6 +188,12 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     }
                 }
 
+                //Set Break settings
+                setBreakActions(orgID, branchID, State, availableActions);
+                //Set Custom Settings
+                setCustomStateActions(orgID, branchID, State, availableActions);
+
+
                 let WindowListButtonsVisible = false;
                 //TODO: THe list serving counter
                 if (CurrentWindow.Type_LV == enums.counterTypes.NoCallServing) {
@@ -164,16 +208,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     }
                 }
 
-                if (tEnableBreak && (State == enums.EmployeeActiontypes.Serving || State == enums.EmployeeActiontypes.Ready || State == enums.EmployeeActiontypes.Processing || State == enums.EmployeeActiontypes.Custom || State == enums.EmployeeActiontypes.NoCallServing)) {
-                    availableActions.BreakAllowed = true;
-                }
-
-                TempString = configurationService.getCommonSettings(branchID, constants.CUSTOM_STATE_SETTINGS);
-                if (TempString != null && TempString.startsWith("1") && (State == enums.EmployeeActiontypes.Serving || State == enums.EmployeeActiontypes.Ready || State == enums.EmployeeActiontypes.Processing || State == enums.EmployeeActiontypes.Break || State == enums.EmployeeActiontypes.NoCallServing)) {
-                    availableActions.CustomStateAllowed = true;
-                }
-
-               if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
+                if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
                     //ListServingAllowed
                     if (WindowListButtonsVisible && (State == enums.EmployeeActiontypes.NotReady || State == enums.EmployeeActiontypes.Serving || State == enums.EmployeeActiontypes.Processing || State == enums.EmployeeActiontypes.Custom)) {
                         availableActions.ListServeAllowed = true;
@@ -186,36 +221,15 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     if (WindowListButtonsVisible && availableActions.HoldAllowed || (availableActions.TransferToServiceAllowed && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0) || availableActions.TransferToCounterAllowed) {
                         availableActions.ListServeWithAllowed = true;
                     }
-                    
-                    
-                    if (State == enums.EmployeeActiontypes.Serving && CurrentWindow.CurrentCustomerTransaction != null && CurrentWindow.CurrentCustomerTransaction.RecallNo < MaxRecallTimes) {
+
+
+                    if (State == enums.EmployeeActiontypes.Serving && CurrentTransaction != null && CurrentTransaction.RecallNo < MaxRecallTimes) {
                         availableActions.RecallAllowed = true;
                     }
                     //Automatic Transfer
-                    if (CurrentWorkFlow && CurrentWorkFlow.IsAutomaticTransferToServiceEnabled == true && AvailableAction.TransferToServiceAllowed == true && CurrentWorkFlow.IsNextEnabled == true) {
-                        availableActions.AutomaticTransferToServiceAllowed = true;
-                    }
-
-
-                    if (CurrentWorkFlow && CurrentWorkFlow.AutomaticTransferToServiceID && CurrentWorkFlow.AutomaticTransferToServiceID != "") {
-                        availableActions.AutomaticTransferToServiceID = AvailableAction.TransferServicesIDs.find(function (ID) {
-                            return ID == CurrentWorkFlow.AutomaticTransferToServiceID
-                        });
-                    }
-                  
-                    //Add PreService
-                    if (CurrentWorkFlow && CurrentWorkFlow.IsAddPreServiceEnabled == true) {
-                        availableActions.AddPreServiceAllowed = true;
-                        availableActions.AddPreServiceID = CurrentWorkFlow.AddPreServiceID;
-                    }
-
-                    //Add PreService on Transfer to Service
-                    if (CurrentWorkFlow && CurrentWorkFlow.IsAddPreServiceOnTransferToServiceEnabled == true) {
-                        availableActions.AddPreServiceOnTransferToServiceAllowed = true;
-                        availableActions.AddPreServiceOnTransferID = CurrentWorkFlow.AddPreServiceOnTransferID;
-                    }
+                    setAutomaticTransferSettings(CurrentWorkFlow, availableActions);
+                    setPreServiceSettings(CurrentWorkFlow, availableActions);
                 }
-
             }
             else {
                 availableActions.HideServeButton = true;
