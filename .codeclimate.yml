@@ -30,7 +30,3 @@ checks:
   identical-code:
     config:
       threshold: # language-specific defaults. an override will affect all languages.
-  exclude_patterns:
-  - "**.spec.js"
-  exclude_paths:
-  - "**.spec.js"
