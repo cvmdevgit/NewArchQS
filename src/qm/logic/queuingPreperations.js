@@ -111,11 +111,16 @@ function setRecallSettings(branchID, CurrentState, CurrentTransaction, available
         availableActions.RecallAllowed = true;
     }
 }
-function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableActions) {
+
+function setOpenSettings(CurrentState,availableActions) {
     //Open Button
     if (CurrentState != enums.EmployeeActiontypes.Serving && CurrentState != enums.EmployeeActiontypes.Ready && CurrentState != enums.EmployeeActiontypes.Processing && CurrentState != enums.EmployeeActiontypes.NoCallServing) {
         availableActions.OpenAllowed = true;
     }
+}
+
+function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableActions) {
+
     //Serve Button
     availableActions.HideServeButton = configurationService.getCommonSettingsBool(branchID, constants.HIDE_SERVE_BUTTON);
 
@@ -130,8 +135,9 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
             WindowListButtonsVisible = true;
         }
     }
+    let isValidCounterStates = (CurrentState == enums.EmployeeActiontypes.NotReady || CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Custom)
     //ListServingAllowed
-    if (WindowListButtonsVisible && (CurrentState == enums.EmployeeActiontypes.NotReady || CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Custom)) {
+    if (WindowListButtonsVisible && isValidCounterStates) {
         availableActions.ListServeAllowed = true;
 
         //If (Serve) button was hidden then keep (Serve With) button enabled
@@ -193,7 +199,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
 
 
 
-            let State = CurrentActivity.type;
+            let State = parseInt(CurrentActivity.type);
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
 
                 //Serve Button
@@ -233,6 +239,8 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                 if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
                     //Set the recall setting
                     setRecallSettings(branchID, State, CurrentTransaction, availableActions)
+                    //Open button settings
+                    setOpenSettings(State,availableActions)
                     //Serve with/ list serving settings
                     setServeWithSettings(branchID, CurrentWindow, State, availableActions);
                     //Automatic Transfer
