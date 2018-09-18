@@ -1,34 +1,35 @@
 
 class availableActions {
         constructor() {
-                this.TransferToServiceAllowed;
+                this.TransferToServiceAllowed = false;
                 this.TransferServicesIDs = [];
-                this.TransferToCounterAllowed;
+                this.TransferToCounterAllowed = false;
                 this.TransferCounters = [];
-                this.AddServiceAllowed;
+                this.AddServiceAllowed = false;
                 this.AddServiceEnabledAfter;
                 this.AddServices = [];
-                this.NextAllowed;
+                this.NextAllowed = false;
                 this.NextEnabledAfter;
-                this.HoldAllowed;
-                this.OpenAllowed;
-                this.BreakAllowed;
-                this.FinishAllowed;
-                this.CustomStateAllowed;
-                this.RecallAllowed;
-                this.ListServeAllowed;
-                this.ListServeWithAllowed;
+                this.HoldAllowed = false;
+                this.OpenAllowed = false;
+                this.BreakAllowed = false;
+                this.FinishAllowed = false;
+                this.CustomStateAllowed = false;
+                this.RecallAllowed = false;
+                this.ListServeAllowed = false;
+                this.ListServeWithAllowed = false;
                 this.MaxAcceptableServiceTime;
-                this.AutomaticTransferToServiceAllowed;
-                this.AutomaticTransferToServiceID;
-                this.AddPreServiceAllowed;
-                this.AddPreServiceOnTransferToServiceAllowed;
-                this.AddPreServiceID;
-                this.AddPreServiceOnTransferID;
-                this.HideServeButton;
-                this.ShowServeWithButton;
-                this.TransferBackAllowed;
-                this.IdentifyCustomerAllowed;
+                this.AutomaticTransferToServiceAllowed = false;
+                this.AutomaticTransferToServiceID = "";
+                this.AddPreServiceAllowed = false;
+                this.AddPreServiceOnTransferToServiceAllowed = false;
+                this.AddPreServiceID = "";
+                this.AddPreServiceOnTransferID = "";
+                this.HideServeButton = false;
+                this.ShowServeWithButton = false;
+                this.TransferBackAllowed = false;
+                this.IdentifyCustomerAllowed = false;
+                this.EditCustomerInfoAllowed = false;
         }
 }
 module.exports = availableActions;
