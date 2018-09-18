@@ -330,8 +330,8 @@ function getServiceAvailableActions(branchID, Service_ID) {
         FilterStatistics.branch_ID = branchID;
         FilterStatistics.service_ID = Service_ID;
         let Statistics = statisticsManager.GetSpecificStatistics(FilterStatistics);
-        let NumberOfWaitedCustomers = Statistics? Statistics.WaitedCustomersNo : 0;
-        
+        let NumberOfWaitedCustomers = Statistics ? Statistics.WaitedCustomersNo : 0;
+
         //allow Display On Ticketing Software
         if (mEnabled && service.DisplayOnKiosk && IsAllocated && (service.MaxCustomersPerDay == 0 || service.MaxCustomersPerDay >= NumberOfWaitedCustomers + 1)) {
             tServiceAvailableActions.DisplayingOnTicketingSoftware = true;
@@ -595,7 +595,7 @@ function PrepareAddList(orgID, branchID, counterID) {
                         //Check Segment Validation
                         let serviceSegmentPriorityRange = configurationService.getServiceSegmentPriorityRange(CurrentTransaction.segment_ID, TempServiceID);
                         IsAtleastSegmentValid = ((serviceSegmentPriorityRange != undefined) && isSegmentAllocatedOnServingEntity);
-                        
+
                         //if there is no segments allocated on any counter then don't add the segment
                         if (IsAtleastSegmentValid == false) {
                             let segments = configurationService.getSegmentsOnService(TempServiceID);
@@ -657,51 +657,49 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
             }
             let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
             if (AllocationType == enums.AllocationTypes.Counter) {
+
                 //Check if the ticket was transferred
-                if (CurrentTransaction.TransferredByWinID != "" || CurrentTransaction.TransferredFromServiceID != "") {
-                    if (CurrentTransaction.TransferredByWinID != "" && CurrentTransaction.TransferredFromServiceID != "") {
-                        //If these two was filled that means that the service should be allocated on the counter to allow the return
-                        let allocatedCounters = getAllocatedServingCounters(branchID, CurrentTransaction.TransferredFromServiceID)
-                        if (!allocatedCounters || allocatedCounters.indexOf(CurrentTransaction.TransferredByWinID) < 0) {
-                            return false;
-                        }
-                        else {
-                            return true;
-                        }
-                    }
-                    else {
+
+                //Check if the employee has the service and he is logged in a counter
+                if (CurrentTransaction.TransferredByWinID == "" && CurrentTransaction.TransferredFromServiceID == "") {
+                    return false;
+                }
+                if (CurrentTransaction.TransferredByWinID != "" && CurrentTransaction.TransferredFromServiceID != "") {
+                    //If these two was filled that means that the service should be allocated on the counter to allow the return
+                    let allocatedCounters = getAllocatedServingCounters(branchID, CurrentTransaction.TransferredFromServiceID)
+                    if (allocatedCounters && allocatedCounters.indexOf(CurrentTransaction.TransferredByWinID) >= 0) {
                         return true;
                     }
+                }
+                else {
+                    return true;
                 }
                 return false;
             }
             else {
                 //Check if the employee has the service and he is logged in a counter
-                if (CurrentTransaction.TransferredByEmpID != "" || CurrentTransaction.TransferredFromServiceID != "") {
-                    if (CurrentTransaction.TransferredByEmpID != "" && CurrentTransaction.TransferredFromServiceID != "") {
-                        let UserCounterID;
-                        if (CurrentActivity) {
-                            UserCounterID = CurrentActivity.user_ID;
-                        }
-                        //Get the counter that the user is on
-                        if (UserCounterID && UserCounterID != "") {
-                            let State = CurrentActivity.type;
-                            if (State != enums.EmployeeActiontypes.InsideCalenderLoggedOff && State != enums.EmployeeActiontypes.OutsideCalenderLoggedOff) {
-                                //If these two was filled that means that the service should be allocated on the counter to allow the return
-                                let allocatedUsers = getAllocatedServingCounters(branchID, CurrentTransaction.TransferredFromServiceID)
-                                if (!allocatedUsers || allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) < 0) {
-                                    return false;
-                                }
-                                else {
-                                    return true;
-                                }
-
+                if (CurrentTransaction.TransferredByEmpID == "" && CurrentTransaction.TransferredFromServiceID == "") {
+                    return false;
+                }
+                if (CurrentTransaction.TransferredByEmpID != "" && CurrentTransaction.TransferredFromServiceID != "") {
+                    let UserCounterID;
+                    if (CurrentActivity) {
+                        UserCounterID = CurrentActivity.user_ID;
+                    }
+                    //Get the counter that the user is on
+                    if (UserCounterID && UserCounterID != "") {
+                        let State = CurrentActivity.type;
+                        if (State != enums.EmployeeActiontypes.InsideCalenderLoggedOff && State != enums.EmployeeActiontypes.OutsideCalenderLoggedOff) {
+                            //If these two was filled that means that the service should be allocated on the counter to allow the return
+                            let allocatedUsers = getAllocatedServingCounters(branchID, CurrentTransaction.TransferredFromServiceID)
+                            if (!allocatedUsers && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
+                                return true;
                             }
                         }
                     }
-                    else {
-                        return true;
-                    }
+                }
+                else {
+                    return true;
                 }
             }
         }
