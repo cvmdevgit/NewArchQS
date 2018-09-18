@@ -31,4 +31,6 @@ checks:
     config:
       threshold: # language-specific defaults. an override will affect all languages.
   exclude_patterns:
-  - "**.spec.JS"
+  - "**.spec.js"
+  exclude_paths:
+  - "**.spec.js"
