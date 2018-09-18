@@ -293,56 +293,36 @@ function getServiceAvailableActions(branchID, Service_ID) {
         //TODO: Enable service imp
         let mEnabled = true;
         let mWorkFlowPermissions;
+        tServiceAvailableActions.AllowAddingToAnother = false;
+        tServiceAvailableActions.AllowAddingFromAnother = false;
+        tServiceAvailableActions.AllowTransferingToCounter = false;
+        tServiceAvailableActions.AllowTransferingToAnother = false;
+        tServiceAvailableActions.AllowTransferingFromAnother = false;
+        tServiceAvailableActions.DisplayingOnTicketingSoftware = false;
+        tServiceAvailableActions.AllowTicketIssuing = false;
+
         //Allow adding service on this service
         if (mEnabled && service.AddThisToAnotherService && IsAllocated) {
             tServiceAvailableActions.AllowAddingToAnother = true;
-        }
-        else {
-            tServiceAvailableActions.AllowAddingToAnother = false;
         }
 
         //Allow adding this service to another service
         if (mEnabled & service.AddAnotherToThisService && IsAllocated) {
             tServiceAvailableActions.AllowAddingFromAnother = true;
         }
-        else {
-            tServiceAvailableActions.AllowAddingFromAnother = false;
-        }
 
-        //Allow adding service on this service
-        if (mEnabled && service.AddThisToAnotherService && IsAllocated) {
-            tServiceAvailableActions.AllowAddingToAnother = true;
-        }
-        else {
-            tServiceAvailableActions.AllowAddingToAnother = false;
-        }
-        //Allow adding this service to another service
-        if (mEnabled && service.AddAnotherToThisService && IsAllocated) {
-            tServiceAvailableActions.AllowAddingFromAnother = true;
-        }
-        else {
-            tServiceAvailableActions.AllowAddingFromAnother = false;
-        }
         //Allow Transfer to counter
         if (mEnabled && service.TransferToCounter && IsAllocated) {
             tServiceAvailableActions.AllowTransferingToCounter = true;
         }
-        else {
-            tServiceAvailableActions.AllowTransferingToCounter = false;
-        }
+
         //allow Transfer This To AnotherService
         if (mEnabled && service.TransferThisToAnotherService && IsAllocated) {
             tServiceAvailableActions.AllowTransferingToAnother = true;
         }
-        else {
-            tServiceAvailableActions.AllowTransferingToAnother = false;
-        }
         //allow TransferAnother To This Service
         if (mEnabled && service.TransferAnotherToThisService && IsAllocated) {
             tServiceAvailableActions.AllowTransferingFromAnother = true;
-        }
-        else {
-            tServiceAvailableActions.AllowTransferingFromAnother = false;
         }
 
         //TODO: fill waiting customers
@@ -356,16 +336,10 @@ function getServiceAvailableActions(branchID, Service_ID) {
         if (mEnabled && service.DisplayOnKiosk && IsAllocated && (service.MaxCustomersPerDay == 0 || service.MaxCustomersPerDay >= NumberOfWaitedCustomers + 1)) {
             tServiceAvailableActions.DisplayingOnTicketingSoftware = true;
         }
-        else {
-            tServiceAvailableActions.DisplayingOnTicketingSoftware = false;
-        }
 
         //Allow ticket issue On Ticketing Software
         if (mEnabled && IsAllocated && (service.MaxCustomersPerDay == 0 || service.MaxCustomersPerDay >= NumberOfWaitedCustomers + 1)) {
             tServiceAvailableActions.AllowTicketIssuing = true;
-        }
-        else {
-            tServiceAvailableActions.AllowTicketIssuing = false;
         }
 
 
@@ -422,18 +396,12 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
             if (tempDifferentSegmentTransferEnabled == "1") {
                 DifferentSegmentTransferEnabled = true;
             }
-            else {
-                DifferentSegmentTransferEnabled = false;
-            }
 
             //From same hall only
             let tempstrictTransferToCounterInSameHalls = configurationService.getCommonSettings(branchID, constants.STRICT_TRANSFER_COUNTER_TO_SAME_HALLS);
             let strictTransferToCounterInSameHalls = false;
             if (tempstrictTransferToCounterInSameHalls == "1") {
                 strictTransferToCounterInSameHalls = true;
-            }
-            else {
-                strictTransferToCounterInSameHalls = false;
             }
 
             let CountersList = [];
@@ -515,19 +483,13 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
                 return TransferServicesList;
             }
 
-
-
             UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
-
             let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
             //Allow different segments
             let tempDifferentSegmentTransferEnabled = configurationService.getCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
             let DifferentSegmentTransferEnabled = false;
             if (tempDifferentSegmentTransferEnabled == "1") {
                 DifferentSegmentTransferEnabled = true;
-            }
-            else {
-                DifferentSegmentTransferEnabled = false;
             }
 
             let isSegmentAllocatedOnServingEntity = false;
@@ -711,9 +673,7 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
                         return true;
                     }
                 }
-                else {
-                    return false;
-                }
+                return false;
             }
             else {
                 //Check if the employee has the service and he is logged in a counter
@@ -737,20 +697,11 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
                                 }
 
                             }
-                            else {
-                                return false;
-                            }
-                        }
-                        else {
-                            return false;
                         }
                     }
                     else {
                         return true;
                     }
-                }
-                else {
-                    return false;
                 }
             }
         }

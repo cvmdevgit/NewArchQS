@@ -28,24 +28,24 @@ describe('WorkFlow Manager Test', async function () {
         (result != undefined).should.true();
     });
     it('Get Service Available Actions successfully', async function () {
-        let result = await WorkFlowManager.getServiceAvailableActions(CounterID, ServiceID);
+        let result = await WorkFlowManager.getServiceAvailableActions(BranchID, ServiceID);
         (result != undefined).should.true();
     });
     it('Is Transfer Back Allowed successfully', async function () {
-        let result = await WorkFlowManager.IsTransferBackAllowed(OrgID, CounterID, CounterID);
+        let result = await WorkFlowManager.IsTransferBackAllowed(OrgID, BranchID, CounterID);
         (result != undefined).should.true();
     });
     it('Prepare Transfer Counters List successfully', async function () {
-        let result = await WorkFlowManager.PrepareTransferCountersList(OrgID, CounterID, CounterID);
+        let result = await WorkFlowManager.PrepareTransferCountersList(OrgID, BranchID, CounterID);
         (result != undefined).should.true();
     });
     it('Prepare Add List successfully', async function () {
-        let result = await WorkFlowManager.PrepareAddList(OrgID, CounterID, CounterID);
+        let result = await WorkFlowManager.PrepareAddList(OrgID, BranchID, CounterID);
         (result != undefined).should.true();
     });
 
     it('Prepare Transfer Services List successfully', async function () {
-        let result = await WorkFlowManager.PrepareTransferServicesList(OrgID, CounterID, CounterID);
+        let result = await WorkFlowManager.PrepareTransferServicesList(OrgID, BranchID, CounterID);
         (result != undefined).should.true();
     });
 });
