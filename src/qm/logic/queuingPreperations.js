@@ -10,6 +10,35 @@ var dataService = require("../data/dataService");
 var AvailableActions = require("../data/availableActions");
 var WorkFlowManager = require("./workFlowManager");
 
+function setTransferBackSettings(orgID, branchID, counterID, CurrentWorkFlow, availableActions) {
+    let CustomerReturn0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_BACK);
+    //Check Return
+    if (CurrentWorkFlow && CurrentWorkFlow.IsTransferBackEnabled == true && CustomerReturn0Enabled == true) {
+        availableActions.TransferBackAllowed = WorkFlowManager.IsTransferBackAllowed(orgID, branchID, counterID);
+    }
+}
+
+function setAddServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions) {
+    let AddService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_ADDING_SERVICES_PARAMETER);
+    availableActions.AddServiceAllowed = AddService0Enabled && CurrentWorkFlow.IsAddServiceEnabled && serviceAvailableActions.AllowAddingFromAnother;
+    if (availableActions.AddServiceAllowed) {
+        availableActions.AddServices = WorkFlowManager.PrepareAddList(orgID, branchID, counterID);
+    }
+}
+function setTransferToCounterSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions) {
+    let TransfToCounter0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_WINDOW);
+    availableActions.TransferToCounterAllowed = TransfToCounter0Enabled && CurrentWorkFlow.IsTransferToCounterAllowed && serviceAvailableActions.AllowTransferingToCounter;
+    if (availableActions.TransferToCounterAllowed) {
+        availableActions.TransferCounters = WorkFlowManager.PrepareTransferCountersList(orgID, branchID, counterID);
+    }
+}
+function setTransferToServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions) {
+    let TransfToService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_SERVICE);
+    availableActions.TransferToServiceAllowed = TransfToService0Enabled && CurrentWorkFlow.IsTransferToServiceAllowed && serviceAvailableActions.AllowTransferingToAnother;
+    if (availableActions.TransferToServiceAllowed) {
+        availableActions.TransferServicesIDs = WorkFlowManager.PrepareTransferServicesList(orgID, branchID, counterID);
+    }
+}
 function setPreServiceSettings(CurrentWorkFlow, availableActions) {
     //Add PreService
     if (CurrentWorkFlow && CurrentWorkFlow.IsAddPreServiceEnabled == true) {
@@ -57,11 +86,6 @@ function prepareAvailableActions(orgID, branchID, counterID) {
         let CurrentWindow = configurationService.getCounterConfig(counterID);
         //Check for correct type
         if (CurrentWindow && (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing || CurrentWindow.Type_LV == enums.counterTypes.NoCallServing)) {
-            let TransfToService0Enabled = false;
-            let CustomerReturn0Enabled = false;
-
-            let TransfToCounter0Enabled = false;
-            let AddService0Enabled = false;
             let Hold0Enabled = false;
             let NextDebounceSeconds = 0;
             let BreakNotification = 7;
@@ -77,15 +101,6 @@ function prepareAvailableActions(orgID, branchID, counterID) {
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
             let TempString;
-            TransfToService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_SERVICE);
-
-            CustomerReturn0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_BACK);
-
-
-
-            TransfToCounter0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_WINDOW);
-
-            AddService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_ADDING_SERVICES_PARAMETER);
 
             Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
 
@@ -126,34 +141,21 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                         availableActions = CurrentWorkFlow.NextDebouncSeconds;
                         availableActions.NextEnabledAfter = NextDebounceSeconds;
                     }
-                    availableActions.TransferToServiceAllowed = TransfToService0Enabled && CurrentWorkFlow.IsTransferToServiceAllowed && serviceAvailableActions.AllowTransferingToAnother;
-                    availableActions.TransferToCounterAllowed = TransfToCounter0Enabled && CurrentWorkFlow.IsTransferToCounterAllowed && serviceAvailableActions.AllowTransferingToCounter;
-                    availableActions.AddServiceAllowed = AddService0Enabled && CurrentWorkFlow.IsAddServiceEnabled && serviceAvailableActions.AllowAddingFromAnother;
+
                     availableActions.HoldAllowed = Hold0Enabled && CurrentWorkFlow.IsHoldEnabled;
                     availableActions.AddServiceEnabledAfter = serviceAvailableActions.MinServiceTime;
 
                     //MaxAcceptableServiceTime
-                    let serviceConfig = configurationService.getServiceConfigFromService(CurrentTransaction.service_ID);
+                    let serviceConfig = configurationService.getServiceConfigFromService(service_ID);
                     availableActions.MaxAcceptableServiceTime = serviceConfig.KPI_AST_MaxAcceptedValue;
 
-                    //Check Return
-                    if (CurrentWorkFlow == null || CurrentWorkFlow.IsTransferBackEnabled == false || CustomerReturn0Enabled == false) {
-                        availableActions.TransferBackAllowed = false;
-                    }
-                    else {
-                        availableActions.TransferBackAllowed = WorkFlowManager.IsTransferBackAllowed(orgID, branchID, counterID);
-                    }
-                }
-                if (availableActions.TransferToServiceAllowed) {
-                    availableActions.TransferServicesIDs = WorkFlowManager.PrepareTransferServicesList(orgID, branchID, counterID);
+                    //Check Complicated actions
+                    setTransferBackSettings(orgID, branchID, counterID, CurrentWorkFlow, availableActions)
+                    setAddServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions);
+                    setTransferToCounterSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions);
+                    setTransferToServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions);
                 }
 
-                if (availableActions.TransferToCounterAllowed) {
-                    availableActions.TransferCounters = WorkFlowManager.PrepareTransferCountersList(orgID, branchID, counterID);
-                }
-                if (availableActions.AddServiceAllowed) {
-                    availableActions.AddServices = WorkFlowManager.PrepareAddList(orgID, branchID, counterID);
-                }
                 TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_EDITING_SERVED_CUSTOMER_INFO);
                 if (TempString && TempString == "1" && State == enums.EmployeeActiontypes.Serving) {
 
