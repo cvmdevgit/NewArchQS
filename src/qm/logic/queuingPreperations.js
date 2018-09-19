@@ -153,10 +153,8 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
 function setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions) {
     let NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
     let BreakNotification = configurationService.getCommonSettingsInt(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
-    if (State == enums.EmployeeActiontypes.Serving) {
-        if (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled) {
-            availableActions.NextAllowed = true;
-        }
+    if (State == enums.EmployeeActiontypes.Serving && (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled)) {
+        availableActions.NextAllowed = true;
     }
     availableActions.NextEnabledAfter = 0;
     if (CurrentWorkFlow && CurrentWorkFlow.OverrideNextDebounceSeconds) {
@@ -176,17 +174,16 @@ function prepareAvailableActions(orgID, branchID, counterID) {
     var availableActions = new AvailableActions();
     try {
         let CurrentWindow = configurationService.getCounterConfig(counterID);
-        let CounterIsServingOrNoCall = (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing || CurrentWindow.Type_LV == enums.counterTypes.NoCallServing);
+        let ServingTypes = [enums.counterTypes.CustomerServing , enums.counterTypes.NoCallServing]
+        let CounterIsServingOrNoCall = (ServingTypes.indexOf(CurrentWindow.Type_LV) > -1);
         //Check for correct type
         if (CounterIsServingOrNoCall) {
 
             let CurrentWorkFlow
             let output = [];
-            let CounterData;
             let CurrentActivity;
             let CurrentTransaction;
             dataService.getCurrentData(orgID, branchID, counterID, output);
-            CounterData = output[1];
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
 
@@ -226,32 +223,15 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                 //Set Custom Settings
                 setCustomStateActions(orgID, branchID, State, availableActions);
 
-                if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
-                    //Set the recall setting
-                    setRecallSettings(branchID, State, CurrentTransaction, availableActions)
-                    //Open button settings
-                    setOpenSettings(State, availableActions)
-                    //Serve with/ list serving settings
-                    setServeWithSettings(branchID, CurrentWindow, State, availableActions);
-                    //Automatic Transfer
-                    setAutomaticTransferSettings(CurrentWorkFlow, availableActions);
-                    setPreServiceSettings(CurrentWorkFlow, availableActions);
-                }
-            }
-            else {
-                availableActions.HideServeButton = true;
-                availableActions.ShowServeWithButton = false;
-                availableActions.FinishAllowed = false;
-                availableActions.TransferToServiceAllowed = false;
-                availableActions.TransferToCounterAllowed = false;
-                availableActions.AddServiceAllowed = false;
-                availableActions.HoldAllowed = false;
-                availableActions.TransferBackAllowed = false;
-                availableActions.AddServices = null;
-                availableActions.TransferCounters = null;
-                availableActions.TransferServicesIDs = null;
-                availableActions.EditCustomerInfoAllowed = false;
-                availableActions.IdentifyCustomerAllowed = false;
+                //Set the recall setting
+                setRecallSettings(branchID, State, CurrentTransaction, availableActions)
+                //Open button settings
+                setOpenSettings(State, availableActions)
+                //Serve with/ list serving settings
+                setServeWithSettings(branchID, CurrentWindow, State, availableActions);
+                //Automatic Transfer
+                setAutomaticTransferSettings(CurrentWorkFlow, availableActions);
+                setPreServiceSettings(CurrentWorkFlow, availableActions);
             }
         }
         return availableActions;
