@@ -149,13 +149,14 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
     }
 }
 
-
 function setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions) {
-    let NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
-    let BreakNotification = configurationService.getCommonSettingsInt(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
     if (State == enums.EmployeeActiontypes.Serving && (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled)) {
         availableActions.NextAllowed = true;
     }
+}
+function setNextDebounceSettings(orgID, branchID, State, CurrentWorkFlow, availableActions) {
+    let NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
+    let BreakNotification = configurationService.getCommonSettingsInt(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
     availableActions.NextEnabledAfter = 0;
     if (CurrentWorkFlow && CurrentWorkFlow.OverrideNextDebounceSeconds) {
         availableActions.NextEnabledAfter = CurrentWorkFlow.NextDebounceSeconds;
@@ -217,7 +218,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
 
                 //Set Next and debounce settings
                 setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions);
-
+                setNextDebounceSettings(orgID, branchID, State, CurrentWorkFlow, availableActions);
                 //Set the recall setting
                 setRecallSettings(branchID, State, CurrentTransaction, availableActions)
                 //Open button settings
