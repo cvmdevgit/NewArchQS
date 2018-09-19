@@ -174,21 +174,20 @@ function prepareAvailableActions(orgID, branchID, counterID) {
     var availableActions = new AvailableActions();
     try {
         let CurrentWindow = configurationService.getCounterConfig(counterID);
-        let ServingTypes = [enums.counterTypes.CustomerServing , enums.counterTypes.NoCallServing]
+        let ServingTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing]
         let CounterIsServingOrNoCall = (ServingTypes.indexOf(CurrentWindow.Type_LV) > -1);
         //Check for correct type
         if (CounterIsServingOrNoCall) {
 
-            let CurrentWorkFlow
+            let CurrentWorkFlow;
+            let serviceAvailableActions;
             let output = [];
             let CurrentActivity;
             let CurrentTransaction;
             dataService.getCurrentData(orgID, branchID, counterID, output);
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
-
             availableActions.EnableTakingCustomerPhoto = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
-
             let State = parseInt(CurrentActivity.type);
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
                 //Serve Button
@@ -199,7 +198,7 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                 if (CurrentTransaction && CurrentTransaction.service_ID) {
                     service_ID = CurrentTransaction.service_ID;
                     CurrentWorkFlow = WorkFlowManager.getWorkFlow(branchID, service_ID);
-                    let serviceAvailableActions = WorkFlowManager.getServiceAvailableActions(branchID, service_ID);
+                    serviceAvailableActions = WorkFlowManager.getServiceAvailableActions(branchID, service_ID);
                     availableActions.AddServiceEnabledAfter = serviceAvailableActions.MinServiceTime;
                     //MaxAcceptableServiceTime
                     let serviceConfig = configurationService.getServiceConfigFromService(service_ID);
@@ -218,10 +217,6 @@ function prepareAvailableActions(orgID, branchID, counterID) {
 
                 //Set Next and debounce settings
                 setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions);
-                //Set Break settings
-                setBreakActions(orgID, branchID, State, availableActions);
-                //Set Custom Settings
-                setCustomStateActions(orgID, branchID, State, availableActions);
 
                 //Set the recall setting
                 setRecallSettings(branchID, State, CurrentTransaction, availableActions)
@@ -233,6 +228,11 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                 setAutomaticTransferSettings(CurrentWorkFlow, availableActions);
                 setPreServiceSettings(CurrentWorkFlow, availableActions);
             }
+
+            //Set Break settings
+            setBreakActions(orgID, branchID, State, availableActions);
+            //Set Custom Settings
+            setCustomStateActions(orgID, branchID, State, availableActions);
         }
         return availableActions;
     }
