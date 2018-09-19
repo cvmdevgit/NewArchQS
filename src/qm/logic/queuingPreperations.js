@@ -66,15 +66,17 @@ function setAutomaticTransferSettings(CurrentWorkFlow, availableActions) {
     }
 }
 function setCustomStateActions(orgID, branchID, CurrentState, availableActions) {
+    let ValidStates = [enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.Break, enums.EmployeeActiontypes.NoCallServing];
     let TempString = configurationService.getCommonSettings(branchID, constants.CUSTOM_STATE_SETTINGS);
-    if (TempString != null && TempString.startsWith("1") && (CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Ready || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Break || CurrentState == enums.EmployeeActiontypes.NoCallServing)) {
+    if (TempString != null && TempString.startsWith("1") && (ValidStates.indexOf(CurrentState) > -1)) {
         availableActions.CustomStateAllowed = true;
     }
 }
 function setBreakActions(orgID, branchID, CurrentState, availableActions) {
+    let BreakValidStates = [enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.Custom, enums.EmployeeActiontypes.NoCallServing];
     let tEnableBreak = false;
     tEnableBreak = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_BREAK);
-    if (tEnableBreak && (CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Ready || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Custom || CurrentState == enums.EmployeeActiontypes.NoCallServing)) {
+    if (tEnableBreak && (BreakValidStates.indexOf(CurrentState) > -1)) {
         availableActions.BreakAllowed = true;
     }
 }
@@ -152,12 +154,12 @@ function setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActio
     let NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
     let BreakNotification = configurationService.getCommonSettingsInt(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
     if (State == enums.EmployeeActiontypes.Serving) {
-             if (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled) {
+        if (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled) {
             availableActions.NextAllowed = true;
         }
     }
     availableActions.NextEnabledAfter = 0;
-    if (CurrentWorkFlow.OverrideNextDebounceSeconds) {
+    if (CurrentWorkFlow && CurrentWorkFlow.OverrideNextDebounceSeconds) {
         availableActions.NextEnabledAfter = CurrentWorkFlow.NextDebounceSeconds;
     }
     let Debouncestates = [enums.EmployeeActiontypes.Serving, State == enums.EmployeeActiontypes.Processing];
