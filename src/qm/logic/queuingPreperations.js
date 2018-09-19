@@ -113,8 +113,9 @@ function setRecallSettings(branchID, CurrentState, CurrentTransaction, available
 }
 
 function setOpenSettings(CurrentState, availableActions) {
+    let OpenDisableStates = [enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.NoCallServing];
     //Open Button
-    if (CurrentState != enums.EmployeeActiontypes.Serving && CurrentState != enums.EmployeeActiontypes.Ready && CurrentState != enums.EmployeeActiontypes.Processing && CurrentState != enums.EmployeeActiontypes.NoCallServing) {
+    if (OpenDisableStates.indexOf(CurrentState) < 0) {
         availableActions.OpenAllowed = true;
     }
 }
@@ -132,14 +133,16 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
         let Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
         WindowListButtonsVisible = Hold0Enabled ? true : false;
     }
-    let isValidCounterStates = (CurrentState == enums.EmployeeActiontypes.NotReady || CurrentState == enums.EmployeeActiontypes.Serving || CurrentState == enums.EmployeeActiontypes.Processing || CurrentState == enums.EmployeeActiontypes.Custom)
+    let validStates = [enums.EmployeeActiontypes.NotReady, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.Custom]
+    let isValidCounterStates = validStates.indexOf(CurrentState) > -1;
     //ListServingAllowed
     if (WindowListButtonsVisible && isValidCounterStates) {
         availableActions.ListServeAllowed = true;
         //If (Serve) button was hidden then keep (Serve With) button enabled
-        availableActions.ListServeWithAllowed = availableActions.HideServeButton?true:false;
+        availableActions.ListServeWithAllowed = availableActions.HideServeButton ? true : false;
     }
-    if (WindowListButtonsVisible && availableActions.HoldAllowed || (availableActions.TransferToServiceAllowed && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0) || availableActions.TransferToCounterAllowed) {
+    let isTransferEnabled = (availableActions.TransferToServiceAllowed == true && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0)
+    if (WindowListButtonsVisible && availableActions.HoldAllowed || isTransferEnabled || availableActions.TransferToCounterAllowed) {
         availableActions.ListServeWithAllowed = true;
     }
 }
