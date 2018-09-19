@@ -149,27 +149,24 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
 
 
 function setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions) {
+    let NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
+    let BreakNotification = configurationService.getCommonSettingsInt(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
     if (State == enums.EmployeeActiontypes.Serving) {
-        let NextDebounceSeconds = configurationService.getCommonSettingsInt(branchID, constants.NEXT_DEBOUNCE_SECONDS);
-        let BreakNotification = configurationService.getCommonSettingsInt(branchID, constants.SHOW_CUSTOMER_NOTIFICATION_INTERVAL);
-        if (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled) {
+             if (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled) {
             availableActions.NextAllowed = true;
         }
-        availableActions.NextEnabledAfter = 0;
-        if (CurrentWorkFlow.OverrideNextDebounceSeconds) {
-            availableActions.NextEnabledAfter = CurrentWorkFlow.NextDebounceSeconds;
-        }
-        if (State == enums.EmployeeActiontypes.Serving || State == enums.EmployeeActiontypes.Processing) {
-            availableActions.NextEnabledAfter = NextDebounceSeconds;
-        }
-        else if (State == enums.EmployeeActiontypes.Ready) {
-            if (NextDebounceSeconds < BreakNotification) {
-                availableActions.NextEnabledAfter = NextDebounceSeconds;
-            }
-            else {
-                availableActions.NextEnabledAfter = BreakNotification;
-            }
-        }
+    }
+    availableActions.NextEnabledAfter = 0;
+    if (CurrentWorkFlow.OverrideNextDebounceSeconds) {
+        availableActions.NextEnabledAfter = CurrentWorkFlow.NextDebounceSeconds;
+    }
+    let Debouncestates = [enums.EmployeeActiontypes.Serving, State == enums.EmployeeActiontypes.Processing];
+    if (Debouncestates.indexOf(State) > -1) {
+        availableActions.NextEnabledAfter = NextDebounceSeconds;
+    }
+
+    if (State == enums.EmployeeActiontypes.Ready) {
+        availableActions.NextEnabledAfter = (NextDebounceSeconds < BreakNotification) ? NextDebounceSeconds : BreakNotification;
     }
 }
 
@@ -190,21 +187,15 @@ function prepareAvailableActions(orgID, branchID, counterID) {
             CounterData = output[1];
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
-            let TempString;
 
             availableActions.EnableTakingCustomerPhoto = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
 
-
-
             let State = parseInt(CurrentActivity.type);
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
-
                 //Serve Button
                 availableActions.ShowServeWithButton = configurationService.getCommonSettingsBool(branchID, constants.SHOW_SERVE_WITH_BUTTON);
-
                 //Check IF fINISH SERVING SHOULD BE ALLOWED
                 setFinishActions(branchID, State, availableActions)
-
                 let service_ID;
                 if (CurrentTransaction && CurrentTransaction.service_ID) {
                     service_ID = CurrentTransaction.service_ID;
