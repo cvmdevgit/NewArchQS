@@ -576,6 +576,55 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
         return [];
     }
 }
+
+function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, current_service_ID, current_SegmentID, current_ServiceWorkflow, serviceID, isSegmentAllocatedOnServingEntity, AllocationType) {
+    try {
+        //Get Max Number Of add
+        let MaxRequestsPerAddedService = 0;
+        let TempMaxVirtRequests = configurationService.getCommonSettings(BranchConfig.ID, constants.MAX_REQUESTS_PER_VIRTUAL_SERVICE);
+        if (!TempMaxVirtRequests) {
+            MaxRequestsPerAddedService = 0;
+        }
+        else {
+            MaxRequestsPerAddedService = parseInt(TempMaxVirtRequests);
+        }
+
+        //Check Segment Validation
+        let serviceSegmentPriorityRange = configurationService.getServiceSegmentPriorityRange(current_SegmentID, serviceID);
+        let IsAtleastSegmentValid = ((serviceSegmentPriorityRange != undefined) && isSegmentAllocatedOnServingEntity);
+
+        //if there is no segments allocated on any counter then don't add the segment
+        if (IsAtleastSegmentValid == false) {
+            let segments = configurationService.getSegmentsOnService(serviceID);
+            if (segments) {
+                segments = segments.filter(function (segment) {
+                    return isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, segment.ID, AllocationType);
+                });
+            }
+            if (!segments) return false;
+        }
+
+        //Check Service validation
+        let tmpServiceAvailableActions = getServiceAvailableActions(BranchConfig.ID, serviceID);
+        if (serviceID && tmpServiceAvailableActions && tmpServiceAvailableActions.AllowAddingToAnother && IsServiceAllowedtoAddOrTransfer(current_ServiceWorkflow, serviceID)) {
+            if (MaxRequestsPerAddedService == 0) {
+                if (serviceID != current_service_ID) {
+                    return true;
+                }
+            }
+            else {
+                //TODO: Check for maximum number of same service
+                return true;
+            }
+        }
+        return false;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+}
+
 //Prepare Transfer to Services
 function PrepareAddList(orgID, branchID, counterID) {
     try {
@@ -601,58 +650,23 @@ function PrepareAddList(orgID, branchID, counterID) {
             if (!CurrentActivity || !CurrentTransaction) {
                 return AddServicesList;
             }
-            let MaxRequestsPerVirtualService = 0;
+
             let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
-            let TempMaxVirtRequests = configurationService.getCommonSettings(branchID, constants.MAX_REQUESTS_PER_VIRTUAL_SERVICE);
-            if (!TempMaxVirtRequests) {
-                MaxRequestsPerVirtualService = 0;
-            }
-            else {
-                MaxRequestsPerVirtualService = parseInt(TempMaxVirtRequests);
-            }
-
             UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
-
             let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
             let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
 
             //Get The workFlow
-            let Current_service_ID = CurrentTransaction.service_ID;
-            let tmpWorkFlow = getWorkFlow(branchID, Current_service_ID);
-            let ServiceAvailableActions = getServiceAvailableActions(branchID, Current_service_ID);
-            if (tmpWorkFlow && tmpWorkFlow.IsAddServiceEnabled && allocated_Queue && allocated_Queue.length > 0) {
+            let current_service_ID = CurrentTransaction.service_ID;
+            let current_ServiceWorkflow = getWorkFlow(branchID, current_service_ID);
+            let ServiceAvailableActions = getServiceAvailableActions(branchID, current_service_ID);
+            if (current_ServiceWorkflow && current_ServiceWorkflow.IsAddServiceEnabled && allocated_Queue && allocated_Queue.length > 0) {
                 if (ServiceAvailableActions && ServiceAvailableActions.AllowAddingFromAnother) {
                     for (let index = 0; index < allocated_Queue.length; index++) {
-                        let IsAtleastSegmentValid = false;
-                        let TempServiceID = allocated_Queue[index];
-                        //Check Segment Validation
-                        let serviceSegmentPriorityRange = configurationService.getServiceSegmentPriorityRange(CurrentTransaction.segment_ID, TempServiceID);
-                        IsAtleastSegmentValid = ((serviceSegmentPriorityRange != undefined) && isSegmentAllocatedOnServingEntity);
-
-                        //if there is no segments allocated on any counter then don't add the segment
-                        if (IsAtleastSegmentValid == false) {
-                            let segments = configurationService.getSegmentsOnService(TempServiceID);
-                            if (segments) {
-                                segments = segments.filter(function (segment) {
-                                    return isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, segment.ID, AllocationType);
-                                });
-                            }
-                            if (!segments) continue;
-                        }
-
-                        //Check Service validation
                         let serviceID = allocated_Queue[index];
-                        let tmpServiceAvailableActions = getServiceAvailableActions(branchID, serviceID);
-                        if (serviceID && tmpServiceAvailableActions && tmpServiceAvailableActions.AllowAddingToAnother && IsServiceAllowedtoAddOrTransfer(tmpWorkFlow, serviceID)) {
-                            if (MaxRequestsPerVirtualService == 0) {
-                                if (serviceID != Current_service_ID) {
-                                    AddServicesList.push(serviceID);
-                                }
-                            }
-                            else {
-                                //TODO: Check for maximum number of same service
-                                AddServicesList.push(serviceID);
-                            }
+                        let t_isServiceValidForAddition = isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, current_service_ID, CurrentTransaction.segment_ID, current_ServiceWorkflow, serviceID, isSegmentAllocatedOnServingEntity, AllocationType);
+                        if (t_isServiceValidForAddition) {
+                            AddServicesList.push(serviceID);
                         }
                     }
                 }
