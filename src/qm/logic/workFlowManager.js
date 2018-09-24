@@ -438,59 +438,73 @@ function GetValidCounterToBeTransfered(branchID, CurrentCounterConfig) {
     }
     return CountersList;
 }
+function isServiceSegmentValidOnCounter(branchID, CounterConfig, CurrentTransaction) {
+    try {
+
+        let BranchConfig = configurationService.getBranchConfig(branchID);
+
+        //Check allocated Services
+        let isServiceSegmentValidCounter = false;
+
+        //Allow different segments
+        let tempDifferentSegmentTransferEnabled = configurationService.getCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
+        let DifferentSegmentTransferEnabled = false;
+        if (tempDifferentSegmentTransferEnabled == "1") {
+            DifferentSegmentTransferEnabled = true;
+        }
+        if (DifferentSegmentTransferEnabled || CounterConfig.SegmentAllocationType == enums.SegmentAllocationType.SelectAll) {
+            let allocated_counters = getAllocatedServicesOnCounter(BranchConfig, CounterConfig.ID)
+            isServiceSegmentValidCounter = (allocated_counters && allocated_counters.length > 0) ? true : false;
+        }
+        else {
+            if (CurrentTransaction) {
+                let counters = getAllocatedCountersOnSegment(BranchConfig, CurrentTransaction.segment_ID);
+                isServiceSegmentValidCounter = (counters != undefined &&
+                    counters.find(function (counter) { return counter == CounterConfig.ID; }) != undefined);
+            }
+        }
+        return isServiceSegmentValidCounter;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+
+}
+
 //Prepare Transfer to Services
 function PrepareTransferCountersList(orgID, branchID, counterID) {
     try {
         let FinalCounterList = [];
-        if (orgID && branchID && counterID) {
-            let BranchConfig = configurationService.getBranchConfig(branchID);
-            let BranchData = dataService.getBranchData(branchID);
-            let CurrentCounter = configurationService.configsCache.counters.find(function (counter) {
-                return counter.ID == counterID;
-            });
+        if (!orgID || !branchID || !counterID) {
+            return FinalCounterList;
+        }
+        let BranchData = dataService.getBranchData(branchID);
+        let CurrentCounter = configurationService.configsCache.counters.find(function (counter) {
+            return counter.ID == counterID;
+        });
 
-            //Allow different segments
-            let tempDifferentSegmentTransferEnabled = configurationService.getCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
-            let DifferentSegmentTransferEnabled = false;
-            if (tempDifferentSegmentTransferEnabled == "1") {
-                DifferentSegmentTransferEnabled = true;
-            }
-            //Get serving counters and hall filtered counters
-            let CountersList = GetValidCounterToBeTransfered(branchID, CurrentCounter);
-            if (CountersList) {
-                for (let CounterIndex = 0; CounterIndex < CountersList.length; CounterIndex++) {
-                    //Get current State
-                    let CounterConfig = CountersList[CounterIndex];
-                    let CounterData = dataService.getCounterData(BranchData, CounterConfig.ID);
-                    //Get Counter Status
-                    let CurrentActivity = dataService.getCurrentActivity(BranchData, CounterData);
-                    let CurrentTransaction = dataService.getCurrentTransaction(BranchData, CounterData);
-                    if (!CurrentActivity) {
-                        continue;
-                    }
+        //Get serving counters and hall filtered counters
+        let CountersList = GetValidCounterToBeTransfered(branchID, CurrentCounter);
+        if (CountersList) {
+            for (let CounterIndex = 0; CounterIndex < CountersList.length; CounterIndex++) {
+                //Get current State
+                let CounterConfig = CountersList[CounterIndex];
+                let CounterData = dataService.getCounterData(BranchData, CounterConfig.ID);
+                //Get Counter Status
+                let CurrentActivity = dataService.getCurrentActivity(BranchData, CounterData);
+                let CurrentTransaction = dataService.getCurrentTransaction(BranchData, CounterData);
+                if (!CurrentActivity) {
+                    continue;
+                }
 
-                    //Check allocated Services
-                    let tServiceSegmentAvailables = false;
+                //Check allocated Services
+                let tServiceSegmentAvailables = isServiceSegmentValidOnCounter(branchID, CounterConfig, CurrentTransaction);
 
-                    if (DifferentSegmentTransferEnabled || CounterConfig.SegmentAllocationType == enums.SegmentAllocationType.SelectAll) {
-                        let allocated_counters = getAllocatedServicesOnCounter(BranchConfig, CounterConfig.ID)
-                        tServiceSegmentAvailables = (allocated_counters && allocated_counters.length > 0) ? true : false;
-                    }
-                    else {
-                        if (CurrentTransaction) {
-                            let counters = getAllocatedCountersOnSegment(BranchConfig, CurrentTransaction.segment_ID);
-                            tServiceSegmentAvailables = (counters && counters.find(function (counter) {
-                                return counter == CounterConfig.ID;
-                            }));
-                        }
-                    }
-                    if (tServiceSegmentAvailables) {
-                        let validStates = [enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.NoCallServing];
-                        //Check counter state
-                        if (validStates.indexOf(CurrentActivity.type) > -1) {
-                            FinalCounterList.push(CounterData.id + "#@%$" + CurrentActivity.user_ID);
-                        }
-                    }
+                //Check counter state
+                let validStates = [enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.NoCallServing];
+                if (tServiceSegmentAvailables && (validStates.indexOf(CurrentActivity.type) > -1)) {
+                    FinalCounterList.push(CounterConfig.ID + "#@%$" + CurrentActivity.user_ID);
                 }
             }
         }
