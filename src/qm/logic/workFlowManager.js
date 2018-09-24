@@ -579,17 +579,9 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
 
 
 //Check if the service is valid to be added into the current state
-function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, current_service_ID, current_SegmentID, current_ServiceWorkflow, serviceID, isSegmentAllocatedOnServingEntity, AllocationType) {
+function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, current_service_ID, current_SegmentID, current_ServiceWorkflow, serviceID, isSegmentAllocatedOnServingEntity, AllocationType, MaxRequestsPerAddedService) {
     try {
-        //Get Max Number Of add
-        let MaxRequestsPerAddedService = 0;
-        let TempMaxVirtRequests = configurationService.getCommonSettings(BranchConfig.ID, constants.MAX_REQUESTS_PER_VIRTUAL_SERVICE);
-        if (!TempMaxVirtRequests) {
-            MaxRequestsPerAddedService = 0;
-        }
-        else {
-            MaxRequestsPerAddedService = parseInt(TempMaxVirtRequests);
-        }
+        let isServiceValidForAddition = false;
 
         //Check Segment Validation
         let serviceSegmentPriorityRange = configurationService.getServiceSegmentPriorityRange(current_SegmentID, serviceID);
@@ -611,15 +603,15 @@ function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, cur
         if (serviceID && tmpServiceAvailableActions && tmpServiceAvailableActions.AllowAddingToAnother && IsServiceAllowedtoAddOrTransfer(current_ServiceWorkflow, serviceID)) {
             if (MaxRequestsPerAddedService == 0) {
                 if (serviceID != current_service_ID) {
-                    return true;
+                    isServiceValidForAddition =  true;
                 }
             }
             else {
                 //TODO: Check for maximum number of same service
-                return true;
+                isServiceValidForAddition =  true;
             }
         }
-        return false;
+        return isServiceValidForAddition;
     }
     catch (error) {
         logger.logError(error);
@@ -653,6 +645,16 @@ function PrepareAddList(orgID, branchID, counterID) {
                 return AddServicesList;
             }
 
+            //Get Max Number Of add
+            let MaxRequestsPerAddedService = 0;
+            let TempMaxVirtRequests = configurationService.getCommonSettings(branchID, constants.MAX_REQUESTS_PER_VIRTUAL_SERVICE);
+            if (!TempMaxVirtRequests) {
+                MaxRequestsPerAddedService = 0;
+            }
+            else {
+                MaxRequestsPerAddedService = parseInt(TempMaxVirtRequests);
+            }
+
             let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
             UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
             let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
@@ -666,7 +668,9 @@ function PrepareAddList(orgID, branchID, counterID) {
                 if (ServiceAvailableActions && ServiceAvailableActions.AllowAddingFromAnother) {
                     for (let index = 0; index < allocated_Queue.length; index++) {
                         let serviceID = allocated_Queue[index];
-                        let t_isServiceValidForAddition = isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, current_service_ID, CurrentTransaction.segment_ID, current_ServiceWorkflow, serviceID, isSegmentAllocatedOnServingEntity, AllocationType);
+                        let t_isServiceValidForAddition = isServiceValidForAddition(BranchConfig, CurrentCounter,
+                            UserConfig, current_service_ID, CurrentTransaction.segment_ID, current_ServiceWorkflow,
+                            serviceID, isSegmentAllocatedOnServingEntity, AllocationType, MaxRequestsPerAddedService);
                         if (t_isServiceValidForAddition) {
                             AddServicesList.push(serviceID);
                         }
