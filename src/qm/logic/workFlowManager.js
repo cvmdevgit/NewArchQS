@@ -476,9 +476,6 @@ function isServiceSegmentValidOnCounter(branchID, CounterConfig, CurrentTransact
 function PrepareTransferCountersList(orgID, branchID, counterID) {
     try {
         let FinalCounterList = [];
-        if (!orgID || !branchID || !counterID) {
-            return FinalCounterList;
-        }
         let BranchData = dataService.getBranchData(branchID);
         let CurrentCounter = configurationService.configsCache.counters.find(function (counter) {
             return counter.ID == counterID;
@@ -486,26 +483,23 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
 
         //Get serving counters and hall filtered counters
         let CountersList = GetValidCounterToBeTransfered(branchID, CurrentCounter);
-        if (CountersList) {
-            for (let CounterIndex = 0; CounterIndex < CountersList.length; CounterIndex++) {
-                //Get current State
-                let CounterConfig = CountersList[CounterIndex];
-                let CounterData = dataService.getCounterData(BranchData, CounterConfig.ID);
-                //Get Counter Status
-                let CurrentActivity = dataService.getCurrentActivity(BranchData, CounterData);
-                let CurrentTransaction = dataService.getCurrentTransaction(BranchData, CounterData);
-                if (!CurrentActivity) {
-                    continue;
-                }
+        for (let CounterIndex = 0; CounterIndex < CountersList.length; CounterIndex++) {
+            //Get current State
+            let CounterConfig = CountersList[CounterIndex];
+            let CounterData = dataService.getCounterData(BranchData, CounterConfig.ID);
+            //Get Counter Status
+            let CurrentActivity = dataService.getCurrentActivity(BranchData, CounterData);
+            let CurrentTransaction = dataService.getCurrentTransaction(BranchData, CounterData);
+            if (!CurrentActivity) {
+                continue;
+            }
+            //Check allocated Services
+            let tServiceSegmentAvailables = isServiceSegmentValidOnCounter(branchID, CounterConfig, CurrentTransaction);
 
-                //Check allocated Services
-                let tServiceSegmentAvailables = isServiceSegmentValidOnCounter(branchID, CounterConfig, CurrentTransaction);
-
-                //Check counter state
-                let validStates = [enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.NoCallServing];
-                if (tServiceSegmentAvailables && (validStates.indexOf(CurrentActivity.type) > -1)) {
-                    FinalCounterList.push(CounterConfig.ID + "#@%$" + CurrentActivity.user_ID);
-                }
+            //Check counter state
+            let validStates = [enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.NoCallServing];
+            if (tServiceSegmentAvailables && (validStates.indexOf(CurrentActivity.type) > -1)) {
+                FinalCounterList.push(CounterConfig.ID + "#@%$" + CurrentActivity.user_ID);
             }
         }
         return FinalCounterList;
@@ -708,14 +702,11 @@ function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransact
         return false;
     }
     if (CurrentTransaction.TransferredByEmpID != "" && CurrentTransaction.TransferredFromServiceID != "") {
-        let UserCounterID;
         if (CurrentActivity) {
-            UserCounterID = CurrentActivity.user_ID;
-        }
-        //Get the counter that the user is on
-        if (UserCounterID && UserCounterID != "") {
+            //Get the counter that the user is on
             let State = CurrentActivity.type;
-            if (State != enums.EmployeeActiontypes.InsideCalenderLoggedOff && State != enums.EmployeeActiontypes.OutsideCalenderLoggedOff) {
+            let InvalidStates = [enums.EmployeeActiontypes.InsideCalenderLoggedOff, enums.EmployeeActiontypes.OutsideCalenderLoggedOff]
+            if (InvalidStates.indexOf(State) < 0) {
                 //If these two was filled that means that the service should be allocated on the counter to allow the return
                 let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.TransferredFromServiceID)
                 if (!allocatedUsers && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
@@ -727,6 +718,7 @@ function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransact
     else {
         return true;
     }
+    return false;
 }
 function IsTransferBackAllowed(orgID, branchID, counterID) {
     try {
