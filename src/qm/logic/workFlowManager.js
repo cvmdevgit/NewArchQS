@@ -415,7 +415,29 @@ function IsServiceAllowedtoAddOrTransfer(CurrentWorkFlow, ServiceIDToCheck) {
     }
 }
 
-
+function GetValidCounterToBeTransfered(branchID, CurrentCounterConfig) {
+    let CountersList = [];
+    //From same hall only
+    let tempstrictTransferToCounterInSameHalls = configurationService.getCommonSettings(branchID, constants.STRICT_TRANSFER_COUNTER_TO_SAME_HALLS);
+    let strictTransferToCounterInSameHalls = false;
+    if (tempstrictTransferToCounterInSameHalls == "1") {
+        strictTransferToCounterInSameHalls = true;
+    }
+    let CounterTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing];
+    if (strictTransferToCounterInSameHalls) {
+        //Get counter from the same hall
+        CountersList = configurationService.configsCache.counters.filter(function (counter) {
+            return counter.QueueBranch_ID == branchID && counter.ID != CurrentCounterConfig.ID && counter.Hall_ID == CurrentCounterConfig.Hall_ID && (CounterTypes.indexOf(counter.Type_LV) > -1);
+        });
+    }
+    else {
+        //Get counter from the all halls
+        CountersList = configurationService.configsCache.counters.filter(function (counter) {
+            return counter.QueueBranch_ID == branchID && counter.ID != CurrentCounterConfig.ID && (CounterTypes.indexOf(counter.Type_LV) > -1);
+        });
+    }
+    return CountersList;
+}
 //Prepare Transfer to Services
 function PrepareTransferCountersList(orgID, branchID, counterID) {
     try {
@@ -433,29 +455,8 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
             if (tempDifferentSegmentTransferEnabled == "1") {
                 DifferentSegmentTransferEnabled = true;
             }
-
-            //From same hall only
-            let tempstrictTransferToCounterInSameHalls = configurationService.getCommonSettings(branchID, constants.STRICT_TRANSFER_COUNTER_TO_SAME_HALLS);
-            let strictTransferToCounterInSameHalls = false;
-            if (tempstrictTransferToCounterInSameHalls == "1") {
-                strictTransferToCounterInSameHalls = true;
-            }
-
-            let CountersList = [];
-            let CounterTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing];
-            if (strictTransferToCounterInSameHalls) {
-                //Get counter from the same hall
-                CountersList = configurationService.configsCache.counters.filter(function (counter) {
-                    return counter.QueueBranch_ID == branchID && counter.ID != counterID && counter.Hall_ID == CurrentCounter.Hall_ID && (CounterTypes.indexOf(counter.Type_LV) > -1);
-                });
-            }
-            else {
-                //Get counter from the all halls
-                CountersList = configurationService.configsCache.counters.filter(function (counter) {
-                    return counter.QueueBranch_ID == branchID && counter.ID != counterID && (CounterTypes.indexOf(counter.Type_LV) > -1);
-                });
-            }
-
+            //Get serving counters and hall filtered counters
+            let CountersList = GetValidCounterToBeTransfered(branchID, CurrentCounter);
             if (CountersList) {
                 for (let CounterIndex = 0; CounterIndex < CountersList.length; CounterIndex++) {
                     //Get current State
@@ -471,7 +472,7 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
                     //Check allocated Services
                     let tServiceSegmentAvailables = false;
 
-                    if (CounterConfig.SegmentAllocationType == enums.SegmentAllocationType.SelectAll || DifferentSegmentTransferEnabled) {
+                    if (DifferentSegmentTransferEnabled || CounterConfig.SegmentAllocationType == enums.SegmentAllocationType.SelectAll) {
                         let allocated_counters = getAllocatedServicesOnCounter(BranchConfig, CounterConfig.ID)
                         tServiceSegmentAvailables = (allocated_counters && allocated_counters.length > 0) ? true : false;
                     }
