@@ -198,9 +198,11 @@ function getAllocatedServingCounters(branchID, Service_ID) {
         //Get Counters with this service allocated
         let allocated_countersOnServices = getAllocatedCountersOnService(branch, Service_ID);
 
+        let CounterTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing];
+
         //Get hall counters
         let counters = branch.counters.filter(function (counter) {
-            return (counter.Type_LV == enums.counterTypes.CustomerServing || counter.Type_LV == enums.counterTypes.NoCallServing) && allocated_countersOnServices.indexOf(counter.ID) > -1;
+            return (CounterTypes.indexOf(counter.Type_LV) > -1) && allocated_countersOnServices.indexOf(counter.ID) > -1;
         }
         );
         if (counters) {
@@ -440,18 +442,20 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
             }
 
             let CountersList = [];
+            let CounterTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing];
             if (strictTransferToCounterInSameHalls) {
                 //Get counter from the same hall
                 CountersList = configurationService.configsCache.counters.filter(function (counter) {
-                    return counter.QueueBranch_ID == branchID && counter.ID != counterID && counter.Hall_ID == CurrentCounter.Hall_ID && (counter.Type_LV == enums.counterTypes.CustomerServing || counter.Type_LV == enums.counterTypes.NoCallServing);
+                    return counter.QueueBranch_ID == branchID && counter.ID != counterID && counter.Hall_ID == CurrentCounter.Hall_ID && (CounterTypes.indexOf(counter.Type_LV) > -1);
                 });
             }
             else {
                 //Get counter from the all halls
                 CountersList = configurationService.configsCache.counters.filter(function (counter) {
-                    return counter.QueueBranch_ID == branchID && counter.ID != counterID && (counter.Type_LV == enums.counterTypes.CustomerServing || counter.Type_LV == enums.counterTypes.NoCallServing);
+                    return counter.QueueBranch_ID == branchID && counter.ID != counterID && (CounterTypes.indexOf(counter.Type_LV) > -1);
                 });
             }
+
             if (CountersList) {
                 for (let CounterIndex = 0; CounterIndex < CountersList.length; CounterIndex++) {
                     //Get current State
@@ -460,7 +464,9 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
                     //Get Counter Status
                     let CurrentActivity = dataService.getCurrentActivity(BranchData, CounterData);
                     let CurrentTransaction = dataService.getCurrentTransaction(BranchData, CounterData);
-
+                    if (!CurrentActivity) {
+                        continue;
+                    }
 
                     //Check allocated Services
                     let tServiceSegmentAvailables = false;
@@ -478,8 +484,9 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
                         }
                     }
                     if (tServiceSegmentAvailables) {
+                        let validStates = [enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.NoCallServing];
                         //Check counter state
-                        if (CurrentActivity && (CurrentActivity.type == enums.EmployeeActiontypes.Ready || CurrentActivity.type == enums.EmployeeActiontypes.Serving || CurrentActivity.type == enums.EmployeeActiontypes.Processing || CurrentActivity.type == enums.EmployeeActiontypes.NoCallServing) && CounterData.ID != counterID) {
+                        if (validStates.indexOf(CurrentActivity.type) > -1) {
                             FinalCounterList.push(CounterData.id + "#@%$" + CurrentActivity.user_ID);
                         }
                     }
