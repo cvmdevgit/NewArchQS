@@ -515,69 +515,78 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
         return [];
     }
 }
+
+function isServiceValidForTransfer(CurrentServiceWorkflow, Service, isSegmentAllocatedOnServingEntity, DifferentSegmentTransferEnabled, segment_ID) {
+    try {
+        //check if the service is allocated on the segment
+        let isSegmentAllocatedonService = false;
+        let serviceSegmentPriorityRange = configurationService.getServiceSegmentPriorityRange(segment_ID, Service.ID);
+        if (serviceSegmentPriorityRange) {
+            isSegmentAllocatedonService = true;
+        }
+        if (DifferentSegmentTransferEnabled || (DifferentSegmentTransferEnabled == false && isSegmentAllocatedonService && isSegmentAllocatedOnServingEntity)) {
+            return IsServiceAllowedtoAddOrTransfer(CurrentServiceWorkflow, Service.ID);
+        }
+        return false
+    }
+    catch (error) {
+        logger.logError(error);
+        return false
+    }
+}
+
 //Prepare Transfer to Services
 function PrepareTransferServicesList(orgID, branchID, counterID) {
     try {
         let TransferServicesList = [];
-        if (orgID && branchID && counterID) {
-            let BranchConfig = configurationService.getBranchConfig(branchID);
-            let CurrentCounter = configurationService.configsCache.counters.find(function (counter) {
-                return counter.ID == counterID;
-            });
+        if (!orgID || !branchID || !counterID) {
+            return TransferServicesList;
+        }
+        let BranchConfig = configurationService.getBranchConfig(branchID);
+        let CurrentCounter = configurationService.configsCache.counters.find(function (counter) {
+            return counter.ID == counterID;
+        });
 
-            let output = [];
-            let BranchData;
-            let CounterData;
-            let CurrentActivity;
-            let CurrentTransaction;
-            let UserConfig;
-            dataService.getCurrentData(orgID, branchID, counterID, output);
-            BranchData = output[0];
-            CounterData = output[1];
-            CurrentActivity = output[2];
-            CurrentTransaction = output[3];
-            //If there is no activity or no transaction on the counter
-            if (!CurrentActivity || !CurrentTransaction) {
-                return TransferServicesList;
+        let output = [];
+        let BranchData;
+        let CounterData;
+        let CurrentActivity;
+        let CurrentTransaction;
+        let UserConfig;
+        dataService.getCurrentData(orgID, branchID, counterID, output);
+        BranchData = output[0];
+        CounterData = output[1];
+        CurrentActivity = output[2];
+        CurrentTransaction = output[3];
+        //If there is no activity or no transaction on the counter
+        if (!CurrentActivity || !CurrentTransaction) {
+            return TransferServicesList;
+        }
+
+        UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
+        let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
+        //Allow different segments
+        let tempDifferentSegmentTransferEnabled = configurationService.getCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
+        let DifferentSegmentTransferEnabled = false;
+        if (tempDifferentSegmentTransferEnabled == "1") {
+            DifferentSegmentTransferEnabled = true;
+        }
+
+        let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
+        //Get The workFlow
+        let service_ID = CurrentTransaction.service_ID;
+        let CurrentServiceWorkflow = getWorkFlow(branchID, service_ID);
+        let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
+
+        let Unlocated_Services = configurationService.configsCache.services.filter(function (service) {
+            return allocated_Queue.indexOf(service.ID) < 0;
+        });
+
+        for (let index = 0; index < Unlocated_Services.length; index++) {
+            let TempService = Unlocated_Services[index];
+            if (isServiceValidForTransfer(CurrentServiceWorkflow, TempService, isSegmentAllocatedOnServingEntity, DifferentSegmentTransferEnabled, CurrentTransaction.segment_ID)) {
+                TransferServicesList.push(TempService.ID);
             }
-
-            UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
-            let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
-            //Allow different segments
-            let tempDifferentSegmentTransferEnabled = configurationService.getCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
-            let DifferentSegmentTransferEnabled = false;
-            if (tempDifferentSegmentTransferEnabled == "1") {
-                DifferentSegmentTransferEnabled = true;
-            }
-
-
-            let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
-            let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
-
-            //Get The workFlow
-            let service_ID = CurrentTransaction.service_ID;
-            let tmpWorkFlow = getWorkFlow(branchID, service_ID);
-            //let serviceAvailableActions = getServiceAvailableActions(branchID, service_ID);
-
-            let Unlocated_Services = configurationService.configsCache.services.filter(function (service) {
-                return allocated_Queue.indexOf(service.ID) < 0;
-            });
-
-            for (let index = 0; index < Unlocated_Services.length; index++) {
-                let TempService = Unlocated_Services[index];
-                //check if the service is allocated on the segment
-                let isSegmentAllocatedonService = false;
-                let serviceSegmentPriorityRange = configurationService.getServiceSegmentPriorityRange(CurrentTransaction.segment_ID, TempService.ID);
-                if (serviceSegmentPriorityRange) {
-                    isSegmentAllocatedonService = true;
-                }
-                if (DifferentSegmentTransferEnabled || (DifferentSegmentTransferEnabled == false && isSegmentAllocatedonService && isSegmentAllocatedOnServingEntity)) {
-                    if (IsServiceAllowedtoAddOrTransfer(tmpWorkFlow, TempService.ID)) {
-                        TransferServicesList.push(TempService.ID);
-                    }
-                }
-            }
-
         }
         return TransferServicesList;
     }
