@@ -1,4 +1,5 @@
 "use strict";
+delete require.cache[require.resolve("./configurationService")];  
 var constants = require("../../common/constants");
 var configurationService = require("./configurationService");
 var should = require("should");

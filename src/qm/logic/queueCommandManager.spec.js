@@ -1,4 +1,6 @@
 "use strict";
+delete require.cache[require.resolve("./queueCommandManager")]; 
+delete require.cache[require.resolve("./externalDataRequestService")]; 
 var queueCommandManager = require("./queueCommandManager");
 var externalDataRequestService = require("./externalDataRequestService");
 var common = require("../../common/common");

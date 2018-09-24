@@ -2,6 +2,7 @@ var should = require("should");
 var mocha = require('mocha');
 var describe = mocha.describe;
 var it = mocha.it;
+delete require.cache[require.resolve("./repositoriesManager")]; 
 var repositoriesManager = require("./repositoriesManager");
 var transaction = require("../data/transaction");
 var userActivity = require("../data/userActivity");

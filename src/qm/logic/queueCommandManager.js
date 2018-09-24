@@ -314,11 +314,11 @@ var counterLockstateUpdate = function (counterInfo, lockState) {
     return true;
 };
 
-
 //change to customer state (office time)
 var counterCustomState = function (counterInfo) {
     return true;
 };
+
 //Finish customer without call other customers
 var counterFinsihServing = function (counterInfo) {
     return true;

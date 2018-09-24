@@ -34,7 +34,6 @@ async function processQueuingRequest(request, reply) {
             reply = request;
             return result;
         }
-
         return result;
     }
     catch (error) {

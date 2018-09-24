@@ -1,4 +1,8 @@
 "use strict";
+delete require.cache[require.resolve("./queuingPreperations")]; 
+delete require.cache[require.resolve("./statisticsManager")]; 
+delete require.cache[require.resolve("./queueCommandManager")]; 
+
 var queuingPreperations = require("./queuingPreperations");
 var statisticsManager = require("./statisticsManager");
 var queueCommandManager = require("./queueCommandManager");

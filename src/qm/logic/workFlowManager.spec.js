@@ -1,5 +1,8 @@
 "use strict";
-var queuingPreperations = require("./queuingPreperations");
+delete require.cache[require.resolve("./workFlowManager")]; 
+delete require.cache[require.resolve("./statisticsManager")]; 
+delete require.cache[require.resolve("./queueCommandManager")]; 
+
 var statisticsManager = require("./statisticsManager");
 var queueCommandManager = require("./queueCommandManager");
 var WorkFlowManager = require("./workFlowManager");

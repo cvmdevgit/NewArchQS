@@ -1,6 +1,7 @@
 "use strict";
+delete require.cache[require.resolve("./configRepository")]; 
+
 var configRepository = require("./configRepository");
-var common = require("../../common/common");
 var should = require("should");
 var mocha = require("mocha");
 var describe = mocha.describe;

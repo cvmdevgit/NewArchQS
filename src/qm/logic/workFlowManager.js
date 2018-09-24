@@ -37,8 +37,9 @@ function getWorkFlow(branchID, service_ID) {
                     });
                 }
             });
+            return tWorkflow;
         }
-        return tWorkflow;
+        return;
     }
     catch (error) {
         logger.logError(error);
@@ -94,6 +95,7 @@ function getAllocatedCountersOnSegment(branch, Segment_ID) {
         return [];
     }
 }
+
 
 function getAllocatedServicesOnCounter(branch, Counter_ID) {
     try {
@@ -270,10 +272,9 @@ function isSegmentAllocatedOnUser(BranchConfig, UserConfig, SegmentID) {
         return false;
     }
 }
-function getServiceAvailableActions(branchID, Service_ID) {
+function get_GetAllocatedEntities(branchID, Service_ID) {
     try {
         let AllcatedEntities = [];
-        let tServiceAvailableActions = new ServiceAvailableActions();
         let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
         if (AllocationType == enums.AllocationTypes.Counter) {
             AllcatedEntities = getAllocatedServingCounters(branchID, Service_ID);
@@ -281,6 +282,40 @@ function getServiceAvailableActions(branchID, Service_ID) {
         else {
             AllcatedEntities = getAllocatedServingUsers(branchID, Service_ID);
         }
+        return AllcatedEntities;
+    }
+    catch (error) {
+        logger.logError(error);
+        return;
+    }
+}
+
+function getAllocatedEntitiesOnEntity(BranchConfig, counterID, user_ID, AllocationType) {
+    let allocated_Queue = []
+    if (AllocationType == enums.AllocationTypes.Counter) {
+        allocated_Queue = getAllocatedServicesOnCounter(BranchConfig, counterID);
+    }
+    else {
+        allocated_Queue = getAllocatedServicesOnUser(BranchConfig, user_ID);
+    }
+    return allocated_Queue;
+}
+
+function isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, segment_ID, AllocationType) {
+    let isSegmentAllocatedOnServingEntity = false;
+    if (AllocationType == enums.AllocationTypes.Counter) {
+        isSegmentAllocatedOnServingEntity = isSegmentAllocatedOnCounter(BranchConfig, CurrentCounter, segment_ID);
+    }
+    else {
+        isSegmentAllocatedOnServingEntity = isSegmentAllocatedOnUser(BranchConfig, UserConfig, segment_ID);
+    }
+    return isSegmentAllocatedOnServingEntity;
+}
+function getServiceAvailableActions(branchID, Service_ID) {
+    try {
+        let AllcatedEntities = [];
+        let tServiceAvailableActions = new ServiceAvailableActions();
+        AllcatedEntities = get_GetAllocatedEntities(branchID, Service_ID);
         let IsAllocated = ((AllcatedEntities && AllcatedEntities.length) > 0 ? true : false);
 
         //Get The workFlow
@@ -350,7 +385,7 @@ function getServiceAvailableActions(branchID, Service_ID) {
             tServiceAvailableActions.WaitingListChangeServiceID = tmpWorkFlow.WaitingListChangeServiceID;
             tServiceAvailableActions.ChangeServiceEntities = [];
             if (tServiceAvailableActions.AllowWaitingListServiceChange && tServiceAvailableActions.WaitingListChangeServiceID && tServiceAvailableActions.WaitingListChangeServiceID != "") {
-                let EntitiesOnChangeList = get_GetAllocatedEntities(tServiceAvailableActions.WaitingListChangeServiceID);
+                let EntitiesOnChangeList = get_GetAllocatedEntities(branchID, tServiceAvailableActions.WaitingListChangeServiceID);
                 let EntitiesForThisService = AllcatedEntities;
                 if (EntitiesOnChangeList != null && EntitiesForThisService != null && EntitiesOnChangeList.Length > 0) {
                     tServiceAvailableActions.ChangeServiceEntities = EntitiesForThisService.filter(value => -1 !== EntitiesOnChangeList.indexOf(value));
@@ -429,6 +464,7 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
 
                     //Check allocated Services
                     let tServiceSegmentAvailables = false;
+
                     if (CounterConfig.SegmentAllocationType == enums.SegmentAllocationType.SelectAll || DifferentSegmentTransferEnabled) {
                         let allocated_counters = getAllocatedServicesOnCounter(BranchConfig, CounterConfig.ID)
                         tServiceSegmentAvailables = (allocated_counters && allocated_counters.length > 0) ? true : false;
@@ -492,16 +528,9 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
                 DifferentSegmentTransferEnabled = true;
             }
 
-            let isSegmentAllocatedOnServingEntity = false;
-            let allocated_Queue = [];
-            if (AllocationType == enums.AllocationTypes.Counter) {
-                allocated_Queue = getAllocatedServicesOnCounter(BranchConfig, counterID);
-                isSegmentAllocatedOnServingEntity = isSegmentAllocatedOnCounter(BranchConfig, CurrentCounter, CurrentTransaction.segment_ID);
-            }
-            else {
-                allocated_Queue = getAllocatedServicesOnUser(BranchConfig, CurrentActivity.user_ID);
-                isSegmentAllocatedOnServingEntity = isSegmentAllocatedOnUser(BranchConfig, UserConfig, CurrentTransaction.segment_ID);
-            }
+
+            let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
+            let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
 
             //Get The workFlow
             let service_ID = CurrentTransaction.service_ID;
@@ -558,7 +587,7 @@ function PrepareAddList(orgID, branchID, counterID) {
             CurrentTransaction = output[3];
             //If there is no activity or no transaction on the counter
             if (!CurrentActivity || !CurrentTransaction) {
-                return TransferServicesList;
+                return AddServicesList;
             }
             let MaxRequestsPerVirtualService = 0;
             let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
@@ -572,16 +601,8 @@ function PrepareAddList(orgID, branchID, counterID) {
 
             UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
 
-            let isSegmentAllocatedOnServingEntity = false;
-            let allocated_Queue = [];
-            if (AllocationType == enums.AllocationTypes.Counter) {
-                allocated_Queue = getAllocatedServicesOnCounter(BranchConfig, counterID);
-                isSegmentAllocatedOnServingEntity = isSegmentAllocatedOnCounter(BranchConfig, CurrentCounter, CurrentTransaction.segment_ID);
-            }
-            else {
-                allocated_Queue = getAllocatedServicesOnUser(BranchConfig, CurrentActivity.user_ID);
-                isSegmentAllocatedOnServingEntity = isSegmentAllocatedOnUser(BranchConfig, UserConfig, CurrentTransaction.segment_ID);
-            }
+            let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
+            let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
 
             //Get The workFlow
             let Current_service_ID = CurrentTransaction.service_ID;
@@ -600,16 +621,9 @@ function PrepareAddList(orgID, branchID, counterID) {
                         if (IsAtleastSegmentValid == false) {
                             let segments = configurationService.getSegmentsOnService(TempServiceID);
                             if (segments) {
-                                if (AllocationType == enums.AllocationTypes.Counter) {
-                                    segments = segments.filter(function (segment) {
-                                        return isSegmentAllocatedOnCounter(BranchConfig, CurrentCounter, segment.ID);
-                                    });
-                                }
-                                else {
-                                    segments = segments.filter(function (segment) {
-                                        return isSegmentAllocatedOnUser(BranchConfig, UserConfig, segment.ID);
-                                    });
-                                }
+                                segments = segments.filter(function (segment) {
+                                    return isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, segment.ID, AllocationType);
+                                });
                             }
                             if (!segments) continue;
                         }
@@ -690,7 +704,7 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
                         let State = CurrentActivity.type;
                         if (State != enums.EmployeeActiontypes.InsideCalenderLoggedOff && State != enums.EmployeeActiontypes.OutsideCalenderLoggedOff) {
                             //If these two was filled that means that the service should be allocated on the counter to allow the return
-                            let allocatedUsers = getAllocatedServingCounters(branchID, CurrentTransaction.TransferredFromServiceID)
+                            let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.TransferredFromServiceID)
                             if (!allocatedUsers && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
                                 return true;
                             }

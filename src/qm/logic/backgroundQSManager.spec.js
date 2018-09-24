@@ -1,4 +1,6 @@
 "use strict";
+delete require.cache[require.resolve("./queueCommandManager")]; 
+delete require.cache[require.resolve("./backgroundQSManager")]; 
 var queueCommandManager = require("./queueCommandManager");
 var backgroundQSManager = require("./backgroundQSManager");
 var common = require("../../common/common");

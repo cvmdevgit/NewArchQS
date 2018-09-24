@@ -1,9 +1,9 @@
+delete require.cache[require.resolve("./serverCommunication")]; 
 var should = require("should");
 var mocha = require('mocha');
 var request = require('request');
 const url = require('url');
 const querystring = require('querystring');
-
 var describe = mocha.describe;
 var it = mocha.it;
 var serverCommunication = require("./serverCommunication");
