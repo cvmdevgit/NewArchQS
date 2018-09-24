@@ -577,6 +577,8 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
     }
 }
 
+
+//Check if the service is valid to be added into the current state
 function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, current_service_ID, current_SegmentID, current_ServiceWorkflow, serviceID, isSegmentAllocatedOnServingEntity, AllocationType) {
     try {
         //Get Max Number Of add
