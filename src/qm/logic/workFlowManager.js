@@ -655,11 +655,6 @@ function PrepareAddList(orgID, branchID, counterID) {
 }
 function IsTransferBackAllowedForCounter(branchID, CurrentTransaction) {
 
-    //Check if the ticket was transferred
-    if (!CurrentTransaction.TransferredByWinID && !CurrentTransaction.TransferredFromServiceID) {
-        return false;
-    }
-
     //Check if the employee has the service and he is logged in a counter
     if (CurrentTransaction.TransferredByWinID == "" && CurrentTransaction.TransferredFromServiceID == "") {
         return false;
@@ -714,6 +709,10 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
             if (!CurrentTransaction) {
+                return false;
+            }
+            //Check if the ticket was transferred
+            if (!CurrentTransaction.TransferredByWinID && !CurrentTransaction.TransferredFromServiceID) {
                 return false;
             }
             let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
