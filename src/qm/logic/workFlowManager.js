@@ -418,11 +418,7 @@ function IsServiceAllowedtoAddOrTransfer(CurrentWorkFlow, ServiceIDToCheck) {
 function GetValidCounterToBeTransfered(branchID, CurrentCounterConfig) {
     let CountersList = [];
     //From same hall only
-    let tempstrictTransferToCounterInSameHalls = configurationService.getCommonSettings(branchID, constants.STRICT_TRANSFER_COUNTER_TO_SAME_HALLS);
-    let strictTransferToCounterInSameHalls = false;
-    if (tempstrictTransferToCounterInSameHalls == "1") {
-        strictTransferToCounterInSameHalls = true;
-    }
+    let strictTransferToCounterInSameHalls = configurationService.getCommonSettingsBool(branchID, constants.STRICT_TRANSFER_COUNTER_TO_SAME_HALLS);
     let CounterTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing];
     if (strictTransferToCounterInSameHalls) {
         //Get counter from the same hall
@@ -447,11 +443,7 @@ function isServiceSegmentValidOnCounter(branchID, CounterConfig, CurrentTransact
         let isServiceSegmentValidCounter = false;
 
         //Allow different segments
-        let tempDifferentSegmentTransferEnabled = configurationService.getCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
-        let DifferentSegmentTransferEnabled = false;
-        if (tempDifferentSegmentTransferEnabled == "1") {
-            DifferentSegmentTransferEnabled = true;
-        }
+        let DifferentSegmentTransferEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
         if (DifferentSegmentTransferEnabled || CounterConfig.SegmentAllocationType == enums.SegmentAllocationType.SelectAll) {
             let allocated_counters = getAllocatedServicesOnCounter(BranchConfig, CounterConfig.ID)
             isServiceSegmentValidCounter = (allocated_counters && allocated_counters.length > 0) ? true : false;
@@ -560,12 +552,7 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
         UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
         let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
         //Allow different segments
-        let tempDifferentSegmentTransferEnabled = configurationService.getCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
-        let DifferentSegmentTransferEnabled = false;
-        if (tempDifferentSegmentTransferEnabled == "1") {
-            DifferentSegmentTransferEnabled = true;
-        }
-
+        let DifferentSegmentTransferEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
         let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
         //Get The workFlow
         let service_ID = CurrentTransaction.service_ID;
