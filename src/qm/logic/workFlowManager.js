@@ -725,31 +725,28 @@ function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransact
 }
 function IsTransferBackAllowed(orgID, branchID, counterID) {
     try {
-        if (orgID && branchID && counterID) {
-            let output = [];
-            let CounterData;
-            let CurrentActivity;
-            let CurrentTransaction;
-            dataService.getCurrentData(orgID, branchID, counterID, output);
-            CounterData = output[1];
-            CurrentActivity = output[2];
-            CurrentTransaction = output[3];
-            if (!CurrentTransaction) {
-                return false;
-            }
-            //Check if the ticket was transferred
-            if (!CurrentTransaction.TransferredByWinID && !CurrentTransaction.TransferredFromServiceID) {
-                return false;
-            }
-            let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
-            if (AllocationType == enums.AllocationTypes.Counter) {
-                return IsTransferBackAllowedForCounter(branchID, CurrentTransaction);
-            }
-            else {
-                return IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransaction);
-            }
+        let output = [];
+        let CounterData;
+        let CurrentActivity;
+        let CurrentTransaction;
+        dataService.getCurrentData(orgID, branchID, counterID, output);
+        CounterData = output[1];
+        CurrentActivity = output[2];
+        CurrentTransaction = output[3];
+        if (!CurrentTransaction) {
+            return false;
         }
-        return false;
+        //Check if the ticket was transferred
+        if (!CurrentTransaction.TransferredByWinID && !CurrentTransaction.TransferredFromServiceID) {
+            return false;
+        }
+        let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
+        if (AllocationType == enums.AllocationTypes.Counter) {
+            return IsTransferBackAllowedForCounter(branchID, CurrentTransaction);
+        }
+        else {
+            return IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransaction);
+        }
     }
     catch (error) {
         logger.logError(error);
