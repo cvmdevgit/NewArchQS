@@ -603,12 +603,12 @@ function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, cur
         if (serviceID && tmpServiceAvailableActions && tmpServiceAvailableActions.AllowAddingToAnother && IsServiceAllowedtoAddOrTransfer(current_ServiceWorkflow, serviceID)) {
             if (MaxRequestsPerAddedService == 0) {
                 if (serviceID != current_service_ID) {
-                    isServiceValidForAddition =  true;
+                    isServiceValidForAddition = true;
                 }
             }
             else {
                 //TODO: Check for maximum number of same service
-                isServiceValidForAddition =  true;
+                isServiceValidForAddition = true;
             }
         }
         return isServiceValidForAddition;
@@ -687,26 +687,28 @@ function PrepareAddList(orgID, branchID, counterID) {
 }
 function IsTransferBackAllowedForCounter(branchID, CurrentTransaction) {
 
+    let t_IsTransferBackAllowedForCounter = false;
     //Check if the employee has the service and he is logged in a counter
     if (CurrentTransaction.TransferredByWinID == "" && CurrentTransaction.TransferredFromServiceID == "") {
-        return false;
+        t_IsTransferBackAllowedForCounter = false;
     }
     if (CurrentTransaction.TransferredByWinID != "" && CurrentTransaction.TransferredFromServiceID != "") {
         //If these two was filled that means that the service should be allocated on the counter to allow the return
         let allocatedCounters = getAllocatedServingCounters(branchID, CurrentTransaction.TransferredFromServiceID)
         if (allocatedCounters && allocatedCounters.indexOf(CurrentTransaction.TransferredByWinID) >= 0) {
-            return true;
+            t_IsTransferBackAllowedForCounter = true;
         }
     }
     else {
-        return true;
+        t_IsTransferBackAllowedForCounter = true;
     }
-    return false;
+    return t_IsTransferBackAllowedForCounter;
 }
 function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransaction) {
+    let t_IsTransferBackAllowedForUser = false;
     //Check if the employee has the service and he is logged in a counter
     if (CurrentTransaction.TransferredByEmpID == "" && CurrentTransaction.TransferredFromServiceID == "") {
-        return false;
+        t_IsTransferBackAllowedForUser = false;
     }
     if (CurrentTransaction.TransferredByEmpID != "" && CurrentTransaction.TransferredFromServiceID != "") {
         if (CurrentActivity) {
@@ -717,15 +719,15 @@ function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransact
                 //If these two was filled that means that the service should be allocated on the counter to allow the return
                 let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.TransferredFromServiceID)
                 if (!allocatedUsers && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
-                    return true;
+                    t_IsTransferBackAllowedForUser = true;
                 }
             }
         }
     }
     else {
-        return true;
+        t_IsTransferBackAllowedForUser = true;
     }
-    return false;
+    return t_IsTransferBackAllowedForUser;
 }
 function IsTransferBackAllowed(orgID, branchID, counterID) {
     try {
