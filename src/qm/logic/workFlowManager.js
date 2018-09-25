@@ -439,20 +439,24 @@ function isServiceSegmentValidOnCounter(branchID, CounterConfig, CurrentTransact
         //Check allocated Services
         let isServiceSegmentValidCounter = false;
 
-        //Allow different segments
+        //Consider all segments
         let DifferentSegmentTransferEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
         if (DifferentSegmentTransferEnabled || CounterConfig.SegmentAllocationType == enums.SegmentAllocationType.SelectAll) {
             let allocated_counters = getAllocatedServicesOnCounter(BranchConfig, CounterConfig.ID)
             isServiceSegmentValidCounter = (allocated_counters && allocated_counters.length > 0) ? true : false;
+
+            return isServiceSegmentValidCounter;
         }
-        else {
-            if (CurrentTransaction) {
-                let counters = getAllocatedCountersOnSegment(BranchConfig, CurrentTransaction.segment_ID);
-                isServiceSegmentValidCounter = (counters != undefined &&
-                    counters.find(function (counter) { return counter == CounterConfig.ID; }) != undefined);
-            }
+
+        //Consider specific segment only
+        if (CurrentTransaction) {
+            let counters = getAllocatedCountersOnSegment(BranchConfig, CurrentTransaction.segment_ID);
+            isServiceSegmentValidCounter = (counters != undefined &&
+                counters.find(function (counter) { return counter == CounterConfig.ID; }) != undefined);
+
+            return isServiceSegmentValidCounter;
         }
-        return isServiceSegmentValidCounter;
+
     }
     catch (error) {
         logger.logError(error);
@@ -739,11 +743,8 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
         CounterData = output[1];
         CurrentActivity = output[2];
         CurrentTransaction = output[3];
-        if (!CurrentTransaction) {
-            return false;
-        }
         //Check if the ticket was transferred
-        if (!CurrentTransaction.TransferredByWinID && !CurrentTransaction.TransferredFromServiceID) {
+        if (!CurrentTransaction && !CurrentTransaction.TransferredByWinID && !CurrentTransaction.TransferredFromServiceID) {
             return false;
         }
         let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
