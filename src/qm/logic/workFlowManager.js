@@ -338,45 +338,33 @@ function getServiceAvailableActions(branchID, Service_ID) {
         tServiceAvailableActions.DisplayingOnTicketingSoftware = false;
         tServiceAvailableActions.AllowTicketIssuing = false;
 
-        //Allow adding service on this service
-        if (mEnabled && service.AddThisToAnotherService && IsAllocated) {
-            tServiceAvailableActions.AllowAddingToAnother = true;
-        }
+        if (mEnabled && IsAllocated) {
+            //Allow adding service on this service
+            tServiceAvailableActions.AllowAddingToAnother = service.AddThisToAnotherService;
 
-        //Allow adding this service to another service
-        if (mEnabled & service.AddAnotherToThisService && IsAllocated) {
-            tServiceAvailableActions.AllowAddingFromAnother = true;
-        }
+            //Allow adding this service to another service
+            tServiceAvailableActions.AllowAddingFromAnother = service.AddAnotherToThisService;
 
-        //Allow Transfer to counter
-        if (mEnabled && service.TransferToCounter && IsAllocated) {
-            tServiceAvailableActions.AllowTransferingToCounter = true;
-        }
+            //Allow Transfer to counter
+            tServiceAvailableActions.AllowTransferingToCounter = service.TransferToCounter;
 
-        //allow Transfer This To AnotherService
-        if (mEnabled && service.TransferThisToAnotherService && IsAllocated) {
-            tServiceAvailableActions.AllowTransferingToAnother = true;
-        }
-        //allow TransferAnother To This Service
-        if (mEnabled && service.TransferAnotherToThisService && IsAllocated) {
-            tServiceAvailableActions.AllowTransferingFromAnother = true;
-        }
+            //allow Transfer This To AnotherService
+            tServiceAvailableActions.AllowTransferingToAnother = service.TransferThisToAnotherService;
 
-        //TODO: fill waiting customers
-        let FilterStatistics = new statisticsData();
-        FilterStatistics.branch_ID = branchID;
-        FilterStatistics.service_ID = Service_ID;
-        let Statistics = statisticsManager.GetSpecificStatistics(FilterStatistics);
-        let NumberOfWaitedCustomers = Statistics ? Statistics.WaitedCustomersNo : 0;
+            //allow TransferAnother To This Service
+            tServiceAvailableActions.AllowTransferingFromAnother = service.TransferAnotherToThisService;
 
-        //allow Display On Ticketing Software
-        if (mEnabled && service.DisplayOnKiosk && IsAllocated && (service.MaxCustomersPerDay == 0 || service.MaxCustomersPerDay >= NumberOfWaitedCustomers + 1)) {
-            tServiceAvailableActions.DisplayingOnTicketingSoftware = true;
-        }
+            //TODO: fill waiting customers
+            let FilterStatistics = new statisticsData();
+            FilterStatistics.branch_ID = branchID;
+            FilterStatistics.service_ID = Service_ID;
+            let Statistics = statisticsManager.GetSpecificStatistics(FilterStatistics);
+            let NumberOfWaitedCustomers = Statistics ? Statistics.WaitedCustomersNo : 0;
 
-        //Allow ticket issue On Ticketing Software
-        if (mEnabled && IsAllocated && (service.MaxCustomersPerDay == 0 || service.MaxCustomersPerDay >= NumberOfWaitedCustomers + 1)) {
-            tServiceAvailableActions.AllowTicketIssuing = true;
+            //Allow ticket issue On Ticketing Software
+            tServiceAvailableActions.AllowTicketIssuing = (service.MaxCustomersPerDay == 0 || service.MaxCustomersPerDay >= NumberOfWaitedCustomers + 1);
+            //allow Display On Ticketing Software
+            tServiceAvailableActions.DisplayingOnTicketingSoftware = (service.DisplayOnKiosk && tServiceAvailableActions.AllowTicketIssuing);
         }
 
 
