@@ -733,12 +733,11 @@ function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransact
         //Get the counter that the user is on
         let State = CurrentActivity.type;
         let InvalidStates = [enums.EmployeeActiontypes.InsideCalenderLoggedOff, enums.EmployeeActiontypes.OutsideCalenderLoggedOff]
-        if (InvalidStates.indexOf(State) < 0) {
-            //If these two was filled that means that the service should be allocated on the counter to allow the return
-            let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.TransferredFromServiceID)
-            if (!allocatedUsers && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
-                t_IsTransferBackAllowedForUser = true;
-            }
+        //If these two was filled that means that the service should be allocated on the counter to allow the return
+        let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.TransferredFromServiceID)
+        
+        if (InvalidStates.indexOf(State) < 0  && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
+            t_IsTransferBackAllowedForUser = true;
         }
     }
     else {
