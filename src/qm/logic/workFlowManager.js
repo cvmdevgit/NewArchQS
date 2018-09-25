@@ -581,6 +581,16 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
     }
 }
 
+//Get Segments on this service that is allocated on the counter
+function getAllocatedSegmentsForServiceOnCounter(BranchConfig, CurrentCounter, UserConfig, serviceID, AllocationType) {
+    let segments = configurationService.getSegmentsOnService(serviceID);
+    if (segments) {
+        segments = segments.filter(function (segment) {
+            return isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, segment.ID, AllocationType);
+        });
+    }
+    return segments;
+}
 
 //Check if the service is valid to be added into the current state
 function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, current_service_ID, current_SegmentID, current_ServiceWorkflow, serviceID, isSegmentAllocatedOnServingEntity, AllocationType, MaxRequestsPerAddedService) {
@@ -597,12 +607,8 @@ function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, cur
 
         //if there is no segments allocated on any counter then don't add the segment
         if (IsAtleastSegmentValid == false) {
-            let segments = configurationService.getSegmentsOnService(serviceID);
-            if (segments) {
-                segments = segments.filter(function (segment) {
-                    return isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, segment.ID, AllocationType);
-                });
-            }
+            //Get Segments on this service that is allocated on the counter
+            let segments = getAllocatedSegmentsForServiceOnCounter(BranchConfig, CurrentCounter, UserConfig, serviceID, AllocationType);
             if (!segments) return false;
         }
 
@@ -626,6 +632,7 @@ function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, cur
         return false;
     }
 }
+//Get max added service number
 function getMaxNumberOfAddedServices(branchID) {
     //Get Max Number Of add
     let MaxRequestsPerAddedService = 0;
@@ -713,21 +720,24 @@ function IsTransferBackAllowedForCounter(branchID, CurrentTransaction) {
 }
 function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransaction) {
     let t_IsTransferBackAllowedForUser = false;
+
+    if (CurrentActivity) {
+        return t_IsTransferBackAllowedForUser;
+    }
+
     //Check if the employee has the service and he is logged in a counter
     if (CurrentTransaction.TransferredByEmpID == "" && CurrentTransaction.TransferredFromServiceID == "") {
         t_IsTransferBackAllowedForUser = false;
     }
     if (CurrentTransaction.TransferredByEmpID != "" && CurrentTransaction.TransferredFromServiceID != "") {
-        if (CurrentActivity) {
-            //Get the counter that the user is on
-            let State = CurrentActivity.type;
-            let InvalidStates = [enums.EmployeeActiontypes.InsideCalenderLoggedOff, enums.EmployeeActiontypes.OutsideCalenderLoggedOff]
-            if (InvalidStates.indexOf(State) < 0) {
-                //If these two was filled that means that the service should be allocated on the counter to allow the return
-                let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.TransferredFromServiceID)
-                if (!allocatedUsers && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
-                    t_IsTransferBackAllowedForUser = true;
-                }
+        //Get the counter that the user is on
+        let State = CurrentActivity.type;
+        let InvalidStates = [enums.EmployeeActiontypes.InsideCalenderLoggedOff, enums.EmployeeActiontypes.OutsideCalenderLoggedOff]
+        if (InvalidStates.indexOf(State) < 0) {
+            //If these two was filled that means that the service should be allocated on the counter to allow the return
+            let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.TransferredFromServiceID)
+            if (!allocatedUsers && allocatedUsers.indexOf(CurrentTransaction.TransferredByEmpID) >= 0) {
+                t_IsTransferBackAllowedForUser = true;
             }
         }
     }
