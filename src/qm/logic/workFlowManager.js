@@ -618,63 +618,62 @@ function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, cur
         return false;
     }
 }
-
+function getMaxNumberOfAddedServices(branchID) {
+    //Get Max Number Of add
+    let MaxRequestsPerAddedService = 0;
+    let TempMaxVirtRequests = configurationService.getCommonSettings(branchID, constants.MAX_REQUESTS_PER_VIRTUAL_SERVICE);
+    if (!TempMaxVirtRequests) {
+        MaxRequestsPerAddedService = 0;
+    }
+    else {
+        MaxRequestsPerAddedService = parseInt(TempMaxVirtRequests);
+    }
+    return MaxRequestsPerAddedService;
+}
 //Prepare Transfer to Services
 function PrepareAddList(orgID, branchID, counterID) {
     try {
         let AddServicesList = [];
-        if (orgID && branchID && counterID) {
-            let BranchConfig = configurationService.getBranchConfig(branchID);
-            let CurrentCounter = configurationService.configsCache.counters.find(function (counter) {
-                return counter.ID == counterID;
-            });
+        let BranchConfig = configurationService.getBranchConfig(branchID);
+        let CurrentCounter = configurationService.configsCache.counters.find(function (counter) {
+            return counter.ID == counterID;
+        });
 
-            let output = [];
-            let BranchData;
-            let CounterData;
-            let CurrentActivity;
-            let CurrentTransaction;
-            let UserConfig;
-            dataService.getCurrentData(orgID, branchID, counterID, output);
-            BranchData = output[0];
-            CounterData = output[1];
-            CurrentActivity = output[2];
-            CurrentTransaction = output[3];
-            //If there is no activity or no transaction on the counter
-            if (!CurrentActivity || !CurrentTransaction) {
-                return AddServicesList;
-            }
+        let output = [];
+        let BranchData;
+        let CounterData;
+        let CurrentActivity;
+        let CurrentTransaction;
+        let UserConfig;
+        dataService.getCurrentData(orgID, branchID, counterID, output);
+        BranchData = output[0];
+        CounterData = output[1];
+        CurrentActivity = output[2];
+        CurrentTransaction = output[3];
+        //If there is no activity or no transaction on the counter
+        if (!CurrentActivity || !CurrentTransaction) {
+            return AddServicesList;
+        }
 
-            //Get Max Number Of add
-            let MaxRequestsPerAddedService = 0;
-            let TempMaxVirtRequests = configurationService.getCommonSettings(branchID, constants.MAX_REQUESTS_PER_VIRTUAL_SERVICE);
-            if (!TempMaxVirtRequests) {
-                MaxRequestsPerAddedService = 0;
-            }
-            else {
-                MaxRequestsPerAddedService = parseInt(TempMaxVirtRequests);
-            }
+        //Get Max Number Of add
+        let MaxRequestsPerAddedService = getMaxNumberOfAddedServices(branchID);
+        let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
+        UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
+        let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
+        let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
 
-            let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
-            UserConfig = configurationService.getUserConfig(CurrentActivity.user_ID);
-            let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
-            let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
-
-            //Get The workFlow
-            let current_service_ID = CurrentTransaction.service_ID;
-            let current_ServiceWorkflow = getWorkFlow(branchID, current_service_ID);
-            let ServiceAvailableActions = getServiceAvailableActions(branchID, current_service_ID);
-            if (current_ServiceWorkflow && current_ServiceWorkflow.IsAddServiceEnabled && allocated_Queue && allocated_Queue.length > 0) {
-                if (ServiceAvailableActions && ServiceAvailableActions.AllowAddingFromAnother) {
-                    for (let index = 0; index < allocated_Queue.length; index++) {
-                        let serviceID = allocated_Queue[index];
-                        let t_isServiceValidForAddition = isServiceValidForAddition(BranchConfig, CurrentCounter,
-                            UserConfig, current_service_ID, CurrentTransaction.segment_ID, current_ServiceWorkflow,
-                            serviceID, isSegmentAllocatedOnServingEntity, AllocationType, MaxRequestsPerAddedService);
-                        if (t_isServiceValidForAddition) {
-                            AddServicesList.push(serviceID);
-                        }
-                    }
+        //Get The workFlow
+        let current_service_ID = CurrentTransaction.service_ID;
+        let current_ServiceWorkflow = getWorkFlow(branchID, current_service_ID);
+        let ServiceAvailableActions = getServiceAvailableActions(branchID, current_service_ID);
+        if (ServiceAvailableActions.AllowAddingFromAnother && current_ServiceWorkflow.IsAddServiceEnabled && allocated_Queue) {
+            for (let index = 0; index < allocated_Queue.length; index++) {
+                let serviceID = allocated_Queue[index];
+                let t_isServiceValidForAddition = isServiceValidForAddition(BranchConfig, CurrentCounter,
+                    UserConfig, current_service_ID, CurrentTransaction.segment_ID, current_ServiceWorkflow,
+                    serviceID, isSegmentAllocatedOnServingEntity, AllocationType, MaxRequestsPerAddedService);
+                if (t_isServiceValidForAddition) {
+                    AddServicesList.push(serviceID);
                 }
             }
         }
