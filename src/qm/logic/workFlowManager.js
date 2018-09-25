@@ -313,15 +313,37 @@ function isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, segment_ID
     }
     return isSegmentAllocatedOnServingEntity;
 }
+
+function setServiceListAvailableActions(branchID, Service_ID, AllcatedEntities, ServiceAvailableActions) {
+    try {
+        //Get The workFlow
+        let tmpWorkFlow = getWorkFlow(branchID, Service_ID);
+        //Get Change Service permissions
+        if (tmpWorkFlow) {
+            ServiceAvailableActions.AllowSetAsServedAllowed = tmpWorkFlow.IsSetAsServedAllowed;
+            ServiceAvailableActions.AllowWaitingListServiceChange = tmpWorkFlow.IsWaitingListChangeAllowed;
+            ServiceAvailableActions.WaitingListChangeServiceID = tmpWorkFlow.WaitingListChangeServiceID;
+            ServiceAvailableActions.ChangeServiceEntities = [];
+            if (ServiceAvailableActions.AllowWaitingListServiceChange && ServiceAvailableActions.WaitingListChangeServiceID && ServiceAvailableActions.WaitingListChangeServiceID != "") {
+                let EntitiesOnChangeList = get_GetAllocatedEntities(branchID, ServiceAvailableActions.WaitingListChangeServiceID);
+                let EntitiesForThisService = AllcatedEntities;
+                if (EntitiesOnChangeList != null && EntitiesForThisService != null && EntitiesOnChangeList.Length > 0) {
+                    ServiceAvailableActions.ChangeServiceEntities = EntitiesForThisService.filter(value => -1 !== EntitiesOnChangeList.indexOf(value));
+                }
+            }
+        }
+    }
+    catch (error) {
+        logger.logError(error);
+    }
+}
+
 function getServiceAvailableActions(branchID, Service_ID) {
     try {
         let AllcatedEntities = [];
         let tServiceAvailableActions = new ServiceAvailableActions();
         AllcatedEntities = get_GetAllocatedEntities(branchID, Service_ID);
         let IsAllocated = ((AllcatedEntities && AllcatedEntities.length) > 0 ? true : false);
-
-        //Get The workFlow
-        let tmpWorkFlow = getWorkFlow(branchID, Service_ID);
 
         let service = configurationService.configsCache.services.find(function (service) {
             return service.ID == Service_ID;
@@ -367,21 +389,8 @@ function getServiceAvailableActions(branchID, Service_ID) {
             tServiceAvailableActions.DisplayingOnTicketingSoftware = (service.DisplayOnKiosk && tServiceAvailableActions.AllowTicketIssuing);
         }
 
-
         //Get Change Service permissions
-        if (tmpWorkFlow) {
-            tServiceAvailableActions.AllowSetAsServedAllowed = tmpWorkFlow.IsSetAsServedAllowed;
-            tServiceAvailableActions.AllowWaitingListServiceChange = tmpWorkFlow.IsWaitingListChangeAllowed;
-            tServiceAvailableActions.WaitingListChangeServiceID = tmpWorkFlow.WaitingListChangeServiceID;
-            tServiceAvailableActions.ChangeServiceEntities = [];
-            if (tServiceAvailableActions.AllowWaitingListServiceChange && tServiceAvailableActions.WaitingListChangeServiceID && tServiceAvailableActions.WaitingListChangeServiceID != "") {
-                let EntitiesOnChangeList = get_GetAllocatedEntities(branchID, tServiceAvailableActions.WaitingListChangeServiceID);
-                let EntitiesForThisService = AllcatedEntities;
-                if (EntitiesOnChangeList != null && EntitiesForThisService != null && EntitiesOnChangeList.Length > 0) {
-                    tServiceAvailableActions.ChangeServiceEntities = EntitiesForThisService.filter(value => -1 !== EntitiesOnChangeList.indexOf(value));
-                }
-            }
-        }
+        setServiceListAvailableActions(branchID, Service_ID, AllcatedEntities, tServiceAvailableActions)
         return tServiceAvailableActions;
     }
     catch (error) {
@@ -571,6 +580,10 @@ function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, cur
     try {
         let isServiceValidForAddition = false;
 
+        if (!serviceID) {
+            return isServiceValidForAddition;
+        }
+
         //Check Segment Validation
         let serviceSegmentPriorityRange = configurationService.getServiceSegmentPriorityRange(current_SegmentID, serviceID);
         let IsAtleastSegmentValid = ((serviceSegmentPriorityRange != undefined) && isSegmentAllocatedOnServingEntity);
@@ -588,7 +601,7 @@ function isServiceValidForAddition(BranchConfig, CurrentCounter, UserConfig, cur
 
         //Check Service validation
         let tmpServiceAvailableActions = getServiceAvailableActions(BranchConfig.ID, serviceID);
-        if (serviceID && tmpServiceAvailableActions && tmpServiceAvailableActions.AllowAddingToAnother && IsServiceAllowedtoAddOrTransfer(current_ServiceWorkflow, serviceID)) {
+        if (tmpServiceAvailableActions.AllowAddingToAnother && IsServiceAllowedtoAddOrTransfer(current_ServiceWorkflow, serviceID)) {
             if (MaxRequestsPerAddedService == 0) {
                 if (serviceID != current_service_ID) {
                     isServiceValidForAddition = true;
