@@ -411,22 +411,25 @@ function IsServiceAllowedtoAddOrTransfer(CurrentWorkFlow, ServiceIDToCheck) {
         return false;
     }
 }
-
+function isCounterValidTypeTobeTransfered(branchID, counterID, counterConfig) {
+    let CounterTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing];
+    return counterConfig.QueueBranch_ID == branchID && counterConfig.ID != counterID && (CounterTypes.indexOf(counterConfig.Type_LV) > -1);
+}
 function GetValidCounterToBeTransfered(branchID, CurrentCounterConfig) {
     let CountersList = [];
     //From same hall only
     let strictTransferToCounterInSameHalls = configurationService.getCommonSettingsBool(branchID, constants.STRICT_TRANSFER_COUNTER_TO_SAME_HALLS);
-    let CounterTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing];
+
     if (strictTransferToCounterInSameHalls) {
         //Get counter from the same hall
         CountersList = configurationService.configsCache.counters.filter(function (counter) {
-            return counter.QueueBranch_ID == branchID && counter.ID != CurrentCounterConfig.ID && counter.Hall_ID == CurrentCounterConfig.Hall_ID && (CounterTypes.indexOf(counter.Type_LV) > -1);
+            return isCounterValidTypeTobeTransfered(branchID, CurrentCounterConfig.ID, counter) && counter.Hall_ID == CurrentCounterConfig.Hall_ID;
         });
     }
     else {
         //Get counter from the all halls
         CountersList = configurationService.configsCache.counters.filter(function (counter) {
-            return counter.QueueBranch_ID == branchID && counter.ID != CurrentCounterConfig.ID && (CounterTypes.indexOf(counter.Type_LV) > -1);
+            return isCounterValidTypeTobeTransfered(branchID, CurrentCounterConfig.ID, counter);
         });
     }
     return CountersList;
