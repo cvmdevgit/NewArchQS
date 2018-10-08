@@ -27,7 +27,7 @@ const CounterID = "120";
 console.log("externalDataRequestService.spec.js");
 should.toString();
 
-describe('Queuing Command Manager Test', function () {
+describe('External Data Service Test', function () {
     it('Initialize Queuing Command Manager successfully', async function () {
         this.timeout(15000);
         let result = await queueCommandManager.initialize();
@@ -294,6 +294,7 @@ describe('Queuing Command Manager Test', function () {
             payload: apiMessagePayLoad
         };
         let result = await externalDataRequestService.getData(message);
+        console.log(JSON.stringify(message));
         (result === common.success && message.payload.statistics.length >0).should.true();
     });
     it('Get counter statistics failed without sending counter', async function () {
