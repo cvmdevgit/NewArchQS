@@ -9,8 +9,12 @@ var events = require("../common/events");
 var Keys = ["Queuing.*"];
 var QueueName = "Queuing";
 
+let rabbitMQClient;
+if (!common.mock)
+{
+    rabbitMQClient = new RabbitMQClient(QueueName, Keys);
+}
 
-let rabbitMQClient = new RabbitMQClient(QueueName, Keys);
 //Start listening to Queuing Queue
 async function initialize() {
     if (!common.mock)
