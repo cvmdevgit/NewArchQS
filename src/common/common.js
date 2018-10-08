@@ -23,7 +23,7 @@ module.exports.settings = {
         database: "new"
     },
     mock : true,
-    RabbitMQconnection: "amqp://vnojmzgd:p8afSb7X0JtGueCY0hLlfHrAf1oIBqQ_@woodpecker.rmq.cloudamqp.com/vnojmzgd"
-    //RabbitMQconnection = "amqp://localhost"
-}
+    //RabbitMQconnection: "amqp://vnojmzgd:p8afSb7X0JtGueCY0hLlfHrAf1oIBqQ_@woodpecker.rmq.cloudamqp.com/vnojmzgd"
+    RabbitMQconnection: "amqp://localhost"
+};
 

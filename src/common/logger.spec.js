@@ -10,7 +10,7 @@ should.toString();
 
 describe('Test Logger', function () {
     it('Log Error sample', async function () {
-        let result =logger.logError("Error Test");
+        let result = logger.logError("Error Test");
         result.should.be.true();
     });
 });
