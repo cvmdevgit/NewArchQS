@@ -57,7 +57,7 @@ class rabbitMQClient {
                         conn.createChannel(function (err, ch) {
                             ch.assertExchange(QS_EXCHANGE, 'topic', { durable: false })
                             ch.assertQueue(that.RPC_Queue, { durable: false });
-                            ch.assertQueue(that.RPC_Queue_Listener, { durable: false });
+                            ch.assertQueue(that.RPC_Queue_Listener, { durable: false, autoDelete: true });
                             if (that.SubscribTopics && that.SubscribTopics.length > 0) {
                                 for (let i = 0; i < that.SubscribTopics.length; i++) {
                                     ch.bindQueue(that.RPC_Queue_Listener, QS_EXCHANGE, that.SubscribTopics[i]);
