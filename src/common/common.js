@@ -14,7 +14,7 @@ module.exports.serverURL = "http://localhost:3000";
 module.exports.settings = {
     OrgID : "1",
     ServerConnectionParameters : { Username: "SystemUser", Password: "123",   ServerURL : "http://Localhost:8080/CVMServer"  },
-    dbType : "sql",
+    dbType : "sqllite",
     dbConnection : "./db/queuing.db",
     sqldbConnection : {
         user: "sa",
@@ -23,7 +23,7 @@ module.exports.settings = {
         database: "new"
     },
     mock : true,
-    //RabbitMQconnection: "amqp://vnojmzgd:p8afSb7X0JtGueCY0hLlfHrAf1oIBqQ_@woodpecker.rmq.cloudamqp.com/vnojmzgd"
-    RabbitMQconnection: "amqp://localhost"
+    RabbitMQconnection: "amqp://vnojmzgd:p8afSb7X0JtGueCY0hLlfHrAf1oIBqQ_@woodpecker.rmq.cloudamqp.com/vnojmzgd"
+    //RabbitMQconnection: "amqp://localhost"
 };
 
