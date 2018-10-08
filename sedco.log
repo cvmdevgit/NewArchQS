@@ -1,0 +1,36 @@
+14:29:18 18/09/2018
+Error Test
+Stack: 
+Error
+    at Object.logError (C:\NewArch\NewArchQS-master\src\common\logger.js:6:17)
+    at Context.<anonymous> (C:\NewArch\NewArchQS-master\src\common\logger.spec.js:13:28)
+    at callFn (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runnable.js:372:21)
+    at Test.Runnable.run (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runnable.js:364:7)
+    at Runner.runTest (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:455:10)
+    at C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:573:12
+    at next (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:369:14)
+    at C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:379:7
+    at next (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:303:14)
+    at Immediate.<anonymous> (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:347:5)
+    at runCallback (timers.js:810:20)
+    at tryOnImmediate (timers.js:768:5)
+    at processImmediate [as _immediateCallback] (timers.js:745:5)
+14:29:19 18/09/2018
+ReferenceError: TransferServicesList is not defined
+Stack: 
+Error
+    at Object.logError (C:\NewArch\NewArchQS-master\src\common\logger.js:6:17)
+    at Object.PrepareAddList (C:\NewArch\NewArchQS-master\src\qm\logic\workFlowManager.js:639:16)
+    at Context.<anonymous> (C:\NewArch\NewArchQS-master\src\qm\logic\workFlowManager.spec.js:43:44)
+    at callFn (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runnable.js:372:21)
+    at Test.Runnable.run (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runnable.js:364:7)
+    at Runner.runTest (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:455:10)
+    at C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:573:12
+    at next (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:369:14)
+    at C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:379:7
+    at next (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:303:14)
+    at Immediate.<anonymous> (C:\NewArch\NewArchQS-master\node_modules\mocha\lib\runner.js:347:5)
+    at runCallback (timers.js:810:20)
+    at tryOnImmediate (timers.js:768:5)
+    at processImmediate [as _immediateCallback] (timers.js:745:5)
+
