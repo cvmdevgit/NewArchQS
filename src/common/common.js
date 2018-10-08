@@ -15,7 +15,7 @@ module.exports.serverURL = "http://localhost:3000";
 module.exports.settings = {
     OrgID : "1",
     ServerConnectionParameters : { Username: "SystemUser", Password: "123",   ServerURL : "http://Localhost:8080/CVMServer"  },
-    dbType : "sql",
+    dbType : "sqllite",
     dbConnection : "./db/queuing.db",
     sqldbConnection : {
         user: "sa",
