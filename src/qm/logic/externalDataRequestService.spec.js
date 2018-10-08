@@ -1,13 +1,15 @@
 "use strict";
-delete require.cache[require.resolve("./queueCommandManager")]; 
-delete require.cache[require.resolve("./externalDataRequestService")]; 
-var queueCommandManager = require("./queueCommandManager");
-var externalDataRequestService = require("./externalDataRequestService");
-var common = require("../../common/common");
-var should = require("should");
-var mocha = require("mocha");
-var describe = mocha.describe;
-var it = mocha.it;
+var rewire = require("rewire");
+delete require.cache[require.resolve("./queueCommandManager")];
+delete require.cache[require.resolve("./externalDataRequestService")];
+let queueCommandManager = require("./queueCommandManager");
+let externalDataRequestService = rewire("./externalDataRequestService");
+let externalDataRequestServicespecInject = require("./externalDataRequestService.specInject");
+let common = require("../../common/common");
+let should = require("should");
+let mocha = require("mocha");
+let describe = mocha.describe;
+let it = mocha.it;
 
 
 const OrgID = "1";
@@ -24,8 +26,14 @@ const CounterID = "120";
 
 
 
+
 console.log("externalDataRequestService.spec.js");
 should.toString();
+
+beforeEach(async function () {
+    await externalDataRequestServicespecInject.initialize();
+    externalDataRequestService.__set__("statisticsManager",externalDataRequestServicespecInject.statisticsManager);
+});
 
 describe('External Data Service Test', function () {
     it('Initialize Queuing Command Manager successfully', async function () {
@@ -36,213 +44,213 @@ describe('External Data Service Test', function () {
 
     it('Get All Branches', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "branch",
             orgid: OrgID,
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
 
     it('Get All Counters on Branch ID = 106', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "counter",
             orgid: OrgID,
             BranchID: BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
 
     it('Get All Services on Branch ID = 106', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "service",
             orgid: OrgID,
             BranchID: BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
 
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
 
     it('Get All Segments', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "segment",
             orgid: OrgID,
             BranchID: BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
 
-    
+
     it('Get All Users', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "user",
             orgid: OrgID,
             BranchID: BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success && message != undefined && message.payload.users.length > 0).should.true();
     });
 
     it('Get All Users return empty with invalid org', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "user",
             orgid: Invalid_OrgID,
             BranchID: INVALID_BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success && message != undefined && message.payload.users.length == 0).should.true();
     });
 
     it('Get All Halls', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "hall",
             orgid: OrgID,
             BranchID: BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success && message != undefined && message.payload.halls.length > 0).should.true();
     });
 
     it('Get All Halls FAIL with invalid branch ID', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "hall",
             orgid: OrgID,
             BranchID: INVALID_BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success && message != undefined && message.payload.halls.length == 0).should.true();
     });
 
     it('Get All Service Segment Priority Ranges Succeed', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "servicesegmentpriorityrange",
             orgid: OrgID,
             BranchID: BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success && message != undefined && message.payload.serviceSegmentPriorityRanges.length > 0).should.true();
     });
 
     it('Get All Service Segment Priority Ranges FAIL with invalid org ID', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "serviceSegmentPriorityRange",
             orgid: Invalid_OrgID,
             BranchID: INVALID_BranchID
         };
-        var message = {
+        let message = {
             topicName: "read",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success && message != undefined && message.payload.serviceSegmentPriorityRanges.length == 0).should.true();
     });
 
 
     it('Get Branch Statistics', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             EntityName: "segment",
             orgid: OrgID,
             BranchID: BranchID
         };
-        var message = {
+        let message = {
             topicName: "readBranchStatistics",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
 
     it('Get counter state', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             orgid: OrgID,
             branchid: BranchID,
             counterid: CounterID
         };
-        var message = {
+        let message = {
             topicName: "getCounterStatus",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
     it('Get branch all counters states', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             orgid: OrgID,
             branchid: BranchID
         };
-        var message = {
+        let message = {
             topicName: "getAllCountersStatus",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
 
     it('Get counter held customers', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             orgid: OrgID,
             branchid: BranchID,
             counterid: CounterID,
             languageindex: "0",
             origin: "0"
         };
-        var message = {
+        let message = {
             topicName: "getHeldCustomers",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
 
@@ -250,65 +258,64 @@ describe('External Data Service Test', function () {
 
     it('Get counter Allocated Segments', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             orgid: OrgID,
             branchid: BranchID,
             counterid: CounterID,
-            userid:""
+            userid: ""
         };
-        var message = {
+        let message = {
             topicName: "getAllocatedSegments",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
-        (result === common.success && message.payload.segments.length >0).should.true();
+        let result = externalDataRequestService.getData(message);
+        (result === common.success && message.payload.segments.length > 0).should.true();
     });
 
 
     it('Get counter Allocated Services', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             orgid: OrgID,
             branchid: BranchID,
             counterid: CounterID,
-            userid:""
+            userid: ""
         };
-        var message = {
+        let message = {
             topicName: "getAllocatedServices",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
-        (result === common.success && message.payload.services.length >0).should.true();
+        let result = externalDataRequestService.getData(message);
+        (result === common.success && message.payload.services.length > 0).should.true();
     });
 
     it('Get counter statistics successfully', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             orgid: OrgID,
             branchid: BranchID,
             counterid: CounterID,
-            userid:"2"
+            userid: "2"
         };
-        var message = {
+        let message = {
             topicName: "getCounterStatistics",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
-        console.log(JSON.stringify(message));
-        (result === common.success && message.payload.statistics.length >0).should.true();
+        let result = externalDataRequestService.getData(message);
+        (result === common.success && message.payload.statistics.length > 0).should.true();
     });
     it('Get counter statistics failed without sending counter', async function () {
 
-        var apiMessagePayLoad = {
+        let apiMessagePayLoad = {
             orgid: OrgID,
             branchid: BranchID,
-            userid:"2"
+            userid: "2"
         };
-        var message = {
+        let message = {
             topicName: "getCounterStatistics",
             payload: apiMessagePayLoad
         };
-        let result = await externalDataRequestService.getData(message);
+        let result = externalDataRequestService.getData(message);
         (result === common.error && !message.payload.statistics).should.true();
     });
 });

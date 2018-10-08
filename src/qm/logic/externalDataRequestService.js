@@ -207,35 +207,35 @@ function ReadBranchStatistics(apiMessagePayload) {
     return statisticsManager.ReadBranchStatistics(apiMessagePayload);
 };
 
-var getData = async function (message) {
+var getData = function (message) {
     try {
         let result = common.error;
         if (message) {
             var command = message.topicName.replace(ModuleName + "/", "");
             switch (command) {
                 case enums.commands.Read:
-                    result = await Read(message.payload);
+                    result = Read(message.payload);
                     break;
                 case enums.commands.GetHeldCustomers:
-                    result = await getHeldCustomers(message.payload);
+                    result = getHeldCustomers(message.payload);
                     break;
                 case enums.commands.ReadBranchStatistics:
-                    result = await ReadBranchStatistics(message.payload);
+                    result = ReadBranchStatistics(message.payload);
                     break;
                 case enums.commands.GetCounterStatus:
-                    result = await getCounterStatus(message);
+                    result = getCounterStatus(message);
                     break;
                 case enums.commands.GetAllCountersStatus:
-                    result = await getAllCountersStatus(message);
+                    result = getAllCountersStatus(message);
                     break;
                 case enums.commands.GetAllocatedSegments:
-                    result = await getAllocatedSegments(message);
+                    result = getAllocatedSegments(message);
                     break;
                 case enums.commands.GetAllocatedServices:
-                    result = await getAllocatedServices(message);
+                    result = getAllocatedServices(message);
                     break;
                 case enums.commands.getCounterStatistics:
-                    result = await getCounterStatistics(message);
+                    result = getCounterStatistics(message);
                     break;
                 default:
                     result = common.error;

@@ -499,7 +499,7 @@ var getServiceConfigFromService = function (ServiceID) {
 function getMockingDataCache() {
     try {
         let str = fs.readFileSync("Configs.json")
-        let FileconfigsCache = JSON.parse(str);
+        var FileconfigsCache = JSON.parse(str);
 
         configsCache.branches = FileconfigsCache.branches
         configsCache.counters = FileconfigsCache.counters

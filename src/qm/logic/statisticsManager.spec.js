@@ -45,7 +45,7 @@ describe('StatisticsManager initialize successfully', async function () {
         FilterStatistics.branch_ID = BranchID;
         FilterStatistics.counter_ID = CounterID;
         let result = await statisticsManager.GetSpecificStatistics(FilterStatistics);
-        (result && result.NoShowCustomersNo > 0).should.true();
+        (result && result.NoShowCustomersNo == 0).should.true();
     });
     it('Read specific statistics for a valid branch but invalid service and segment will succeed with zero values', async function () {
         let FilterStatistics = new statisticsData();

@@ -12,7 +12,7 @@ var configurationService = require("../configurations/configurationService");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
 var responsePayload = require('../messagePayload/responsePayload');
 var broadcastTopic = "statistics.broadcast";
-var ModuleName = "Statistics"
+var ModuleName = "Statistics";
 var branches_statisticsData = [];
 const UpdateTypes = {
     Add: 0,
@@ -92,10 +92,9 @@ function prepareNewStatistics(transaction) {
 }
 var CreateNewstatistics = function (transaction) {
     try {
-        let ServiceConfig = configurationService.getServiceConfigFromService(transaction.service_ID);
-
         //
         let Statistics = prepareNewStatistics(transaction);
+        let ServiceConfig = configurationService.getServiceConfigFromService(transaction.service_ID);
 
         //Waiting Customer
         UpdateWaitingCustomers(UpdateTypes.Add, Statistics, transaction);
@@ -109,11 +108,13 @@ var CreateNewstatistics = function (transaction) {
         //number of non served customers
         UpdateNonServedCustomersNo(UpdateTypes.Add, Statistics, transaction);
 
-        //avrage serving customers
-        UpdateServiceStatistics(UpdateTypes.Add, Statistics, transaction, ServiceConfig);
+        if (ServiceConfig) {
+            //avrage serving customers
+            UpdateServiceStatistics(UpdateTypes.Add, Statistics, transaction, ServiceConfig);
 
-        //waited customer
-        UpdateWaitingStatistics(UpdateTypes.Add, Statistics, transaction, ServiceConfig);
+            //waited customer
+            UpdateWaitingStatistics(UpdateTypes.Add, Statistics, transaction, ServiceConfig);
+        }
 
         repositoriesManager.entitiesRepo.AddSynch(Statistics);
 
@@ -125,7 +126,7 @@ var CreateNewstatistics = function (transaction) {
     }
 
 };
-function ValidateStatisticForCounter(Statistics,BranchID, CounterID, UserID, CounterHallID, AllocatedSegment, AllocatedService) {
+function ValidateStatisticForCounter(Statistics, BranchID, CounterID, UserID, CounterHallID, AllocatedSegment, AllocatedService) {
     try {
         let valid = true;
         //Filter By user or Counter
@@ -163,12 +164,13 @@ function GetCountersStatistics(BranchID, CounterID, UserID, CounterHallID, Alloc
         if (!BranchID || !CounterID || !UserID || !CounterHallID || !AllocatedSegment || !AllocatedService) {
             return undefined;
         }
-
         let branch_statistics = getBranchStatisticsData(BranchID);
+        //console.log(JSON.stringify(branches_statisticsData));
+        //console.log(JSON.stringify(branch_statistics));
         if (branch_statistics) {
             //if the branch exists
             t_Statistics = branch_statistics.statistics.filter(function (Statistic) {
-                return ValidateStatisticForCounter(Statistic,BranchID, CounterID, UserID, CounterHallID, AllocatedSegment, AllocatedService)
+                return ValidateStatisticForCounter(Statistic, BranchID, CounterID, UserID, CounterHallID, AllocatedSegment, AllocatedService)
             });
         }
         return t_Statistics;
