@@ -15,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "amqp-mock": "^0.1.4-1",
     "amqplib": "^0.5.2",
     "btoa": "^1.2.1",
     "dateformat": "^3.0.3",

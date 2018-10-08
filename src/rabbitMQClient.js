@@ -7,6 +7,8 @@ const EventEmitter = require('events');
 class EmitterClass extends EventEmitter { }
 var QS_EXCHANGE = 'QS_EXCHANGE';
 var channels = [];
+var amqpmock = require('amqp-mock');
+var scope = amqpmock({url: 'amqp://localhost'})
 
 class rabbitMQClient {
     constructor(queueName, Topics) {
