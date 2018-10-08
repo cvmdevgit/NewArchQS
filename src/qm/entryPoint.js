@@ -9,19 +9,11 @@ var events = require("../common/events");
 var Keys = ["Queuing.*"];
 var QueueName = "Queuing";
 
-let rabbitMQClient;
-if (!common.mock)
-{
-    rabbitMQClient = new RabbitMQClient(QueueName, Keys);
-}
 
+let rabbitMQClient = new RabbitMQClient(QueueName, Keys);
 //Start listening to Queuing Queue
 async function initialize() {
-    if (!common.mock)
-    {
-        rabbitMQClient.receive(processQueuingRequest);
-    }
-
+    rabbitMQClient.receive(processQueuingRequest);
     //Add handler to the broadcast message
     events.broadcastMessage.on('event', broadcastMessage);
 
@@ -56,9 +48,7 @@ async function processQueuingRequest(request, reply) {
 async function broadcastMessage(broadcastTopic, request) {
     let result = common.error;
     try {
-        if (!common.mock){
-            await rabbitMQClient.sendBroadcast(broadcastTopic, JSON.stringify(request));
-        }
+        await rabbitMQClient.sendBroadcast(broadcastTopic, JSON.stringify(request));
         return result;
     }
     catch (error) {

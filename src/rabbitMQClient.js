@@ -7,6 +7,8 @@ const EventEmitter = require('events');
 class EmitterClass extends EventEmitter { }
 var QS_EXCHANGE = 'QS_EXCHANGE';
 var channels = [];
+let RabbitMQconnection;
+
 
 class rabbitMQClient {
     constructor(queueName, Topics) {
@@ -51,7 +53,7 @@ class rabbitMQClient {
                     return x.key == (that.RPC_Queue + "_" + that.keysString);
                 });
                 if (!channelItem) {
-                    amqp.connect('amqp://localhost', function (err, conn) {
+                    amqp.connect(common.settings.RabbitMQconnection, function (err, conn) {
                         conn.createChannel(function (err, ch) {
                             ch.assertExchange(QS_EXCHANGE, 'topic', { durable: false })
                             ch.assertQueue(that.RPC_Queue, { durable: false });
