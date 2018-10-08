@@ -7,7 +7,7 @@
     "start": "node ./src/app.js",
     "lint": "esw *.js src",
     "lint:watch": "npm run lint -- --watch",
-    "test": "mocha -R spec --recursive ./src",
+    "test": "mocha -R spec --recursive ./src --exit",
     "testnyc": "nyc mocha -R spec --recursive ./src",
     "coverage": "istanbul cover node_modules/mocha/bin/_mocha -- -R spec --recursive ./src",
     "heroku": "deploy.sh"
