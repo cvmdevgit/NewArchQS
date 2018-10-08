@@ -12,6 +12,10 @@ const ServiceID = "364";
 const ServiceConfig_ID= "363";
 const Invalid_ServiceConfig_ID= "33333";
 const branchid = "106";
+
+const OrgID = "1";
+const Invalid_OrgID = "1123";
+const Invalid_branchid = "101231236";
 should.toString();
 
 /*
@@ -59,26 +63,72 @@ describe('Configration Service', function () {
     });    
     it('Read Branches successfully', async function () {
         var payload = {
-            EntityName: "branch"
+            EntityName: "branch",
+            orgid: OrgID
         }
         let result = await configurationService.Read(payload);
-        (result == common.success).should.true();
+        (result == common.success && payload && payload.branches.length > 0).should.true();
+    });  
+    it('Read Users successfully', async function () {
+        var payload = {
+            EntityName: "user",
+            orgid: OrgID
+        }
+        let result = await configurationService.Read(payload);
+        (result == common.success && payload && payload.users.length > 0).should.true();
+    });  
+    it('Read halls successfully', async function () {
+        var payload = {
+            EntityName: "hall",
+            BranchID: branchid,
+            orgid: OrgID
+        }
+        let result = await configurationService.Read(payload);
+        (result == common.success && payload && payload.halls.length > 0).should.true();
+    });  
+    it('Read halls empty due to invalid org id', async function () {
+        var payload = {
+            EntityName: "hall",
+            BranchID: branchid,
+            orgid: Invalid_OrgID
+        }
+        let result = await configurationService.Read(payload);
+        (result == common.success && payload && payload.halls.length == 0).should.true();
+    });  
+    it('Read service segment priority range successfully', async function () {
+        var payload = {
+            EntityName: "servicesegmentpriorityrange",
+            orgid: OrgID
+        }
+        let result = await configurationService.Read(payload);
+        (result == common.success && payload && payload.serviceSegmentPriorityRanges.length > 0).should.true();
+    });  
+    it('Read service segment priority range empty due to invalid org id', async function () {
+        var payload = {
+            EntityName: "servicesegmentpriorityrange",
+            BranchID: branchid,
+            orgid: Invalid_OrgID
+        }
+        let result = await configurationService.Read(payload);
+        (result == common.success && payload && payload.serviceSegmentPriorityRanges.length == 0).should.true();
     });  
     it('Read Service on Branch 106 successfully', async function () {
         var payload ={
             EntityName: "service",
-            BranchID: branchid
+            BranchID: branchid,
+            orgid: OrgID
         }
         let result = await configurationService.Read(payload);
-        (result == common.success).should.true();
+        (result == common.success && payload && payload.services.length > 0).should.true();
     });  
     it('Read Segments on Branch 106 successfully', async function () {
         var payload ={
             EntityName: "segment",
-            BranchID: branchid
+            BranchID: branchid,
+            orgid: OrgID
         }
         let result = await configurationService.Read(payload);
-        (result == common.success).should.true();
+        (result == common.success && payload && payload.segments.length > 0).should.true();
     });  
     it('Read Counters on Branch 106 successfully', async function () {
         var payload = {
@@ -87,7 +137,7 @@ describe('Configration Service', function () {
             types: ["0", "3"]
         }
         let result = await configurationService.Read(payload);
-        (result == common.success).should.true();
+        (result == common.success && payload && payload.counters.length > 0).should.true();
     });  
     it('Read invalid entity on Branch throws error', async function () {
         var payload = {

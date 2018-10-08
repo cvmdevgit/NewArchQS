@@ -322,7 +322,21 @@ var stop = async function () {
     }
 };
 
-
+var getModifiedEntities = function () {
+    try {
+        //Get the updated with out the new updates
+        let Updated = updateEntities;
+        let Updated_IDs = updateEntities.map(entity => entity.id);
+        let NewAdded = addEntities;
+        let newWithoutUpdate = NewAdded.filter(function (entity) { return Updated_IDs.indexOf(entity.id) < 0 })
+        let Entities = Updated.concat(newWithoutUpdate);
+        return Entities;
+    }
+    catch (error) {
+        logger.logError(error);
+        return undefined;
+    }
+};
 
 var entitiesRepo = function () {
     try {
@@ -339,10 +353,14 @@ var entitiesRepo = function () {
         this.commit = commit;
         this.initialize = initialize;
         this.stop = stop;
+        this.getModifiedEntities = getModifiedEntities;
     }
     catch (error) {
         logger.logError(error);
     }
 };
 
+
+module.exports.updateEntities = updateEntities;
+module.exports.addEntities = addEntities;
 module.exports = entitiesRepo;

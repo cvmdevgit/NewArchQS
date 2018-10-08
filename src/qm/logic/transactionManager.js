@@ -30,7 +30,7 @@ var UpdateTransaction = function (transaction) {
     try {
         let result = common.error;
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(transaction.branch_ID);
+        let BracnhData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
 
         if (BracnhData != null && BracnhData.transactionsData != null) {
 
@@ -66,7 +66,7 @@ var AddTransaction = function (transaction) {
             transaction.visit_ID = transaction.id;
         }
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(transaction.branch_ID);
+        let BracnhData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
         if (BracnhData != null && BracnhData.transactionsData != null) {
             //To Branch Transactions
             BracnhData.transactionsData.push(transaction);
@@ -122,7 +122,7 @@ var getHallID = function (transaction, pAllHalls, pAllocatedHalls) {
         let Hall_ID;
         //Branch Config
         var branch = configurationService.getBranchConfig(transaction.branch_ID);
-        var branchesData = dataService.getBranchData(transaction.branch_ID);
+        var branchesData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
         //Copy IDs
         branch.halls.forEach(function (hall) { pAllHalls.push(hall.ID); });
         //If there was only one Hall Return in
@@ -201,7 +201,7 @@ var holdCurrentCustomer = function (errors, OrgID, BranchID, CounterID, HoldReas
         //Get Max Seq
         let Now = Date.now();
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(BranchID);
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
         let result = common.error;
         //Get the transactions that can be served
         if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
@@ -216,7 +216,7 @@ var holdCurrentCustomer = function (errors, OrgID, BranchID, CounterID, HoldReas
                 }
                 );
                 Current_Counter_Data.currentTransaction_ID = undefined;
-
+                Current_Counter_Data.currentTransaction = undefined;
                 //Update the tranasaction to hold
                 if (CurrentCustomerTransaction) {
                     CurrentCustomerTransaction.state = enums.StateType.OnHold;
@@ -283,7 +283,7 @@ var finishCurrentCustomer = function (errors, OrgID, BranchID, CounterID, Finish
     try {
         let CurrentCustomerTransaction;
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(BranchID);
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
         //Get the transactions that can be served
         if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
             //Finish Serving the previous Ticket if exists
@@ -296,6 +296,7 @@ var finishCurrentCustomer = function (errors, OrgID, BranchID, CounterID, Finish
                 }
                 );
                 Current_Counter_Data.currentTransaction_ID = undefined;
+                Current_Counter_Data.currentTransaction = undefined;
                 if (CurrentCustomerTransaction) {
                     closeTransaction(BracnhData, CurrentCustomerTransaction)
                     //Update the old
@@ -468,7 +469,7 @@ var serveCustomer = function (errors, OrgID, BranchID, CounterID, TransactionID,
 
         let NextCustomerTransaction = new transaction();
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(BranchID);
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
 
         //Branch Config
         let branch = configurationService.getBranchConfig(BranchID);
@@ -540,8 +541,7 @@ function isTransactionAllocated(segment_ID, service_ID, isAllSegments_Allocated,
         let tSegment;
         let tService;
         let servable = false;
-        if (isAllSegments_Allocated)
-        {
+        if (isAllSegments_Allocated) {
             tSegment = segment_ID;
         }
         if (!isAllSegments_Allocated && allocated_segments && allocated_segments.length > 0) {
@@ -614,6 +614,7 @@ function setCounterCurrentTransaction(errors, BracnhData, CounterID, NextCustome
             if (BracnhData.countersData[i].id == CounterID) {
                 found = true;
                 BracnhData.countersData[i].currentTransaction_ID = NextCustomerTransaction.id;
+                BracnhData.countersData[i].currentTransaction = NextCustomerTransaction;
                 break;
             }
         }
@@ -621,6 +622,7 @@ function setCounterCurrentTransaction(errors, BracnhData, CounterID, NextCustome
             let tcounterData = new counterData();
             tcounterData.id = NextCustomerTransaction.counter_ID;
             tcounterData.currentTransaction_ID = NextCustomerTransaction.id;
+            tcounterData.currentTransaction = NextCustomerTransaction;
             BracnhData.countersData.push(tcounterData);
         }
     }
@@ -657,7 +659,7 @@ var getNextCustomer = function (errors, OrgID, BranchID, CounterID, resultArgs) 
 
         let NextCustomerTransaction = new transaction();
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(BranchID);
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
 
         //Branch Config
         var branch = configurationService.getBranchConfig(BranchID);
@@ -677,6 +679,7 @@ var getNextCustomer = function (errors, OrgID, BranchID, CounterID, resultArgs) 
             if (NextCustomerTransaction) {
                 //Start Serving the ticket
                 let Now = Date.now();
+                NextCustomerTransaction.lastCallTime = Now;
                 NextCustomerTransaction.startServingTime = Now;
                 NextCustomerTransaction.state = enums.StateType.Serving;
                 NextCustomerTransaction.counter_ID = CounterID;
@@ -702,7 +705,7 @@ var getNextCustomer = function (errors, OrgID, BranchID, CounterID, resultArgs) 
 function isCounterWorking(counter) {
     try {
 
-        if (counter.currentState && (counter.currentState.type == enums.EmployeeActiontypes.Ready || counter.currentState.type == enums.EmployeeActiontypes.Serving || counter.currentState.type == enums.EmployeeActiontypes.Processing || counter.currentState.type == enums.EmployeeActiontypes.NoCallServing)) {
+        if (counter.currentState && (counter.currentState.type == enums.UserActiontypes.Ready || counter.currentState.type == enums.UserActiontypes.Serving || counter.currentState.type == enums.UserActiontypes.Processing || counter.currentState.type == enums.UserActiontypes.NoCallServing)) {
             return true;
         }
         else {
@@ -849,16 +852,16 @@ function getHallsAllocatedonServiceSegment(Branch, BranchesData, Service_ID, Seg
 //Get the sequence from transactions
 function GetMaxTransactionSequence(transactions, Max_TicketNumber, Min_TicketNumber) {
     try {
-        let ticketSequence = Min_TicketNumber;
+        let ticketSequence = parseInt(Min_TicketNumber);
         if (transactions && transactions.length > 0) {
             let maxTransaction = transactions[0];
             for (let i = 0; i < transactions.length; i++) {
                 //Check for maximum transaction number today
-                if (transactions[i].ticketSequence > maxTransaction.ticketSequence) {
+                if (parseInt(transactions[i].ticketSequence) > parseInt(maxTransaction.ticketSequence)) {
                     maxTransaction = transactions[i];
                 }
             }
-            ticketSequence = maxTransaction.ticketSequence + 1;
+            ticketSequence = parseInt(maxTransaction.ticketSequence) + 1;
         }
         if (ticketSequence > Max_TicketNumber) {
             ticketSequence = Min_TicketNumber;
@@ -873,7 +876,8 @@ function GetMaxTransactionSequence(transactions, Max_TicketNumber, Min_TicketNum
 function isTransactionFromSameSequence(transactionData, NewTransaction) {
     let Now = new Date;
     let Today = Now.setHours(0, 0, 0, 0);
-    return transactionData.branch_ID == NewTransaction.branch_ID && transactionData.symbol == NewTransaction.symbol && transactionData.creationTime > Today;
+    let Tomorrow = Now.setHours(23, 59, 59, 9999);
+    return transactionData.branch_ID == NewTransaction.branch_ID && transactionData.symbol == NewTransaction.symbol && parseFloat(transactionData.creationTime) > Today && parseFloat(transactionData.creationTime) < Tomorrow ;
 }
 
 //Get SequenceRange and get sequence
@@ -971,7 +975,7 @@ function getTransactionSequence(PriorityRange, transaction) {
     try {
         let ticketSequence = 0;
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(transaction.branch_ID);
+        let BracnhData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
         if (BracnhData != null) {
             let Max_TicketNumber = PriorityRange.MaxSlipNo;
             let Min_TicketNumber = PriorityRange.MinSlipNo;

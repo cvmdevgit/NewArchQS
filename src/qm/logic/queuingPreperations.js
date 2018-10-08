@@ -1,6 +1,5 @@
 /*eslint no-unused-vars: "off"*/
 "use strict";
-
 var constants = require("../../common/constants");
 var common = require("../../common/common");
 var logger = require("../../common/logger");
@@ -9,6 +8,11 @@ var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
 var AvailableActions = require("../data/availableActions");
 var WorkFlowManager = require("./workFlowManager");
+var branchCountersState = require("../data/branchCountersState");
+var branchCountersStateArray = [];
+var ActiveStates = [enums.UserActiontypes.Serving, enums.UserActiontypes.Ready, enums.UserActiontypes.Processing, enums.UserActiontypes.NoCallServing];
+//Added for testing Purposes
+var NumberOfChanged = 0;
 
 function setTransferBackSettings(orgID, branchID, counterID, CurrentWorkFlow, availableActions) {
     let CustomerReturn0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_BACK);
@@ -66,14 +70,14 @@ function setAutomaticTransferSettings(CurrentWorkFlow, availableActions) {
     }
 }
 function setCustomStateActions(orgID, branchID, CurrentState, availableActions) {
-    let ValidStates = [enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.Break, enums.EmployeeActiontypes.NoCallServing];
+    let ValidStates = [enums.UserActiontypes.Serving, enums.UserActiontypes.Ready, enums.UserActiontypes.Processing, enums.UserActiontypes.Break, enums.UserActiontypes.NoCallServing];
     let TempString = configurationService.getCommonSettings(branchID, constants.CUSTOM_STATE_SETTINGS);
     if (TempString != null && TempString.startsWith("1") && (ValidStates.indexOf(CurrentState) > -1)) {
         availableActions.CustomStateAllowed = true;
     }
 }
 function setBreakActions(orgID, branchID, CurrentState, availableActions) {
-    let BreakValidStates = [enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.Custom, enums.EmployeeActiontypes.NoCallServing];
+    let BreakValidStates = [enums.UserActiontypes.Serving, enums.UserActiontypes.Ready, enums.UserActiontypes.Processing, enums.UserActiontypes.Custom, enums.UserActiontypes.NoCallServing];
     let tEnableBreak = false;
     tEnableBreak = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_BREAK);
     if (tEnableBreak && (BreakValidStates.indexOf(CurrentState) > -1)) {
@@ -82,8 +86,8 @@ function setBreakActions(orgID, branchID, CurrentState, availableActions) {
 }
 function setFinishActions(branchID, CurrentState, availableActions) {
     //Check IF fINISH SERVING SHOULD BE ALLOWED
-    let tShowServeWithButton = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_FINISH_SERVING);
-    if (tShowServeWithButton && CurrentState == enums.EmployeeActiontypes.Serving) {
+    let tEnableFinish = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_FINISH_SERVING);
+    if (tEnableFinish && CurrentState == enums.UserActiontypes.Serving) {
         availableActions.FinishAllowed = true;
     }
 }
@@ -93,7 +97,7 @@ function setHoldSettings(branchID, CurrentWorkFlow, availableActions) {
 }
 function setCustomerInfoRelatedSettings(branchID, CurrentState, availableActions) {
     let TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_EDITING_SERVED_CUSTOMER_INFO);
-    if (TempString && TempString == "1" && CurrentState == enums.EmployeeActiontypes.Serving) {
+    if (TempString && TempString == "1" && CurrentState == enums.UserActiontypes.Serving) {
 
         //TODO: Missing customer information logic
         availableActions.EditCustomerInfoAllowed = true;
@@ -109,13 +113,13 @@ function setCustomerInfoRelatedSettings(branchID, CurrentState, availableActions
 function setRecallSettings(branchID, CurrentState, CurrentTransaction, availableActions) {
     let MaxRecallTimes = 3;
     MaxRecallTimes = configurationService.getCommonSettingsInt(branchID, constants.MAX_RECALL_TIMES);
-    if (CurrentState == enums.EmployeeActiontypes.Serving && CurrentTransaction != null && CurrentTransaction.recallNo < MaxRecallTimes) {
+    if (CurrentState == enums.UserActiontypes.Serving && CurrentTransaction != null && CurrentTransaction.recallNo < MaxRecallTimes) {
         availableActions.RecallAllowed = true;
     }
 }
 
 function setOpenSettings(CurrentState, availableActions) {
-    let OpenDisableStates = [enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.NoCallServing];
+    let OpenDisableStates = [enums.UserActiontypes.Serving, enums.UserActiontypes.Ready, enums.UserActiontypes.Processing, enums.UserActiontypes.NoCallServing];
     //Open Button
     if (OpenDisableStates.indexOf(CurrentState) < 0) {
         availableActions.OpenAllowed = true;
@@ -135,10 +139,13 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
         let Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
         WindowListButtonsVisible = Hold0Enabled ? true : false;
     }
-    let validStates = [enums.EmployeeActiontypes.NotReady, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing, enums.EmployeeActiontypes.Custom]
-    let isValidCounterStates = validStates.indexOf(CurrentState) > -1;
+    let workingStates = [enums.UserActiontypes.Ready, enums.UserActiontypes.Serving, enums.UserActiontypes.Processing, enums.UserActiontypes.NoCallServing]
+    let isNotWorking = workingStates.indexOf(CurrentState) < 0;
     //ListServingAllowed
-    if (WindowListButtonsVisible && isValidCounterStates) {
+    if (WindowListButtonsVisible) {
+        if (isNotWorking) {
+            availableActions.OpenAllowed = true;
+        }
         availableActions.ListServeAllowed = true;
         //If (Serve) button was hidden then keep (Serve With) button enabled
         availableActions.ListServeWithAllowed = availableActions.HideServeButton ? true : false;
@@ -149,8 +156,8 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
     }
 }
 
-function setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions) {
-    if (State == enums.EmployeeActiontypes.Serving && (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled)) {
+function setNextSettings(CurrentWorkFlow, availableActions) {
+    if (!CurrentWorkFlow || CurrentWorkFlow.IsNextEnabled) {
         availableActions.NextAllowed = true;
     }
 }
@@ -161,35 +168,56 @@ function setNextDebounceSettings(orgID, branchID, State, CurrentWorkFlow, availa
     if (CurrentWorkFlow && CurrentWorkFlow.OverrideNextDebounceSeconds) {
         availableActions.NextEnabledAfter = CurrentWorkFlow.NextDebounceSeconds;
     }
-    let Debouncestates = [enums.EmployeeActiontypes.Serving, State == enums.EmployeeActiontypes.Processing];
+    let Debouncestates = [enums.UserActiontypes.Serving, State == enums.UserActiontypes.Processing];
     if (Debouncestates.indexOf(State) > -1) {
         availableActions.NextEnabledAfter = NextDebounceSeconds;
     }
 
-    if (State == enums.EmployeeActiontypes.Ready) {
+    if (State == enums.UserActiontypes.Ready) {
         availableActions.NextEnabledAfter = (NextDebounceSeconds < BreakNotification) ? NextDebounceSeconds : BreakNotification;
     }
 }
 
-function prepareAvailableActions(orgID, branchID, counterID) {
-    var availableActions = new AvailableActions();
+function isCounterStateValid(State) {
+    let ServingTypes = [enums.UserActiontypes.InsideCalenderLoggedOff, enums.UserActiontypes.OutsideCalenderLoggedOff, enums.UserActiontypes.TicketDispensing, enums.UserActiontypes.Supervising]
+    return (ServingTypes.indexOf(State) < 0)
+}
+
+
+function prepareAvailableActionsForCounter(orgID, branchID, counterID) {
+    var availableActions;
     try {
         let CurrentWindow = configurationService.getCounterConfig(counterID);
+        if (!CurrentWindow) return;
         let ServingTypes = [enums.counterTypes.CustomerServing, enums.counterTypes.NoCallServing]
         let CounterIsServingOrNoCall = (ServingTypes.indexOf(CurrentWindow.Type_LV) > -1);
         //Check for correct type
         if (CounterIsServingOrNoCall) {
-
+            availableActions = new AvailableActions();
             let CurrentWorkFlow;
             let serviceAvailableActions;
             let output = [];
+            let BranchData;
+            let CounterData;
             let CurrentActivity;
             let CurrentTransaction;
             dataService.getCurrentData(orgID, branchID, counterID, output);
+            BranchData = output[0];
+            CounterData = output[1];
             CurrentActivity = output[2];
             CurrentTransaction = output[3];
-            availableActions.EnableTakingCustomerPhoto = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
+            //If the branch or the counter invalid return undifined
+            if (!BranchData || !CounterData) {
+                return;
+            }
+            if (!CurrentActivity) {
+                return availableActions;
+            }
             let State = parseInt(CurrentActivity.type);
+            if (isCounterStateValid(State) == false) {
+                return availableActions;
+            }
+            availableActions.EnableTakingCustomerPhoto = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TACKING_CUSTOMER_PHOTO);
             if (CurrentWindow.Type_LV == enums.counterTypes.CustomerServing) {
                 //Serve Button
                 availableActions.ShowServeWithButton = configurationService.getCommonSettingsBool(branchID, constants.SHOW_SERVE_WITH_BUTTON);
@@ -200,9 +228,9 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     service_ID = CurrentTransaction.service_ID;
                     CurrentWorkFlow = WorkFlowManager.getWorkFlow(branchID, service_ID);
                     serviceAvailableActions = WorkFlowManager.getServiceAvailableActions(branchID, service_ID);
-                    availableActions.AddServiceEnabledAfter = serviceAvailableActions.MinServiceTime;
                     //MaxAcceptableServiceTime
                     let serviceConfig = configurationService.getServiceConfigFromService(service_ID);
+                    availableActions.AddServiceEnabledAfter = serviceConfig.MinServiceTime;
                     availableActions.MaxAcceptableServiceTime = serviceConfig.KPI_AST_MaxAcceptedValue;
 
                     setHoldSettings(branchID, CurrentWorkFlow, availableActions);
@@ -212,24 +240,21 @@ function prepareAvailableActions(orgID, branchID, counterID) {
                     setTransferToCounterSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions);
                     setTransferToServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions);
                 }
-
                 //Set customer Info Settings
                 setCustomerInfoRelatedSettings(branchID, State, availableActions);
-
                 //Set Next and debounce settings
-                setNextSettings(orgID, branchID, State, CurrentWorkFlow, availableActions);
+                setNextSettings(CurrentWorkFlow, availableActions);
                 setNextDebounceSettings(orgID, branchID, State, CurrentWorkFlow, availableActions);
                 //Set the recall setting
                 setRecallSettings(branchID, State, CurrentTransaction, availableActions)
                 //Open button settings
                 setOpenSettings(State, availableActions)
-                //Serve with/ list serving settings
-                setServeWithSettings(branchID, CurrentWindow, State, availableActions);
                 //Automatic Transfer
                 setAutomaticTransferSettings(CurrentWorkFlow, availableActions);
                 setPreServiceSettings(CurrentWorkFlow, availableActions);
             }
-
+            //Serve with/ list serving settings
+            setServeWithSettings(branchID, CurrentWindow, State, availableActions);
             //Set Break settings
             setBreakActions(orgID, branchID, State, availableActions);
             //Set Custom Settings
@@ -239,10 +264,87 @@ function prepareAvailableActions(orgID, branchID, counterID) {
     }
     catch (error) {
         logger.logError(error);
+        return;
+    }
+}
+function getBranchCountersData(branchID) {
+    try {
+        //Check the branch states
+        let BranchCounters = branchCountersStateArray.find(function (BranchCounterStates) {
+            return BranchCounterStates.id == branchID;
+        });
+
+        if (!BranchCounters) {
+            BranchCounters = new branchCountersState();
+            BranchCounters.id = branchID;
+            BranchCounters.ActiveCounterIDs = [];
+            branchCountersStateArray.push(BranchCounters);
+        }
+        return BranchCounters;
+    }
+    catch (error) {
+        logger.logError(error);
+        return;
+    }
+}
+function isCounterActive(CurrentActivity) {
+    if (CurrentActivity && (ActiveStates.indexOf(parseInt(CurrentActivity.type))) > -1) {
+        return true;
+    }
+    return false;
+}
+function AfterActionPreperations(orgID, branchID, counterID) {
+    try {
+        //NumberOf changed records for unit testing purpose
+        NumberOfChanged = 0;
+        //Get current state
+        let output = [];
+        let BranchData;
+        let CounterData;
+        let CurrentActivity;
+        dataService.getCurrentData(orgID, branchID, counterID, output);
+        BranchData = output[0];
+        CounterData = output[1];
+        CurrentActivity = output[2];
+        if (!CounterData) {
+            return;
+        }
+        //Check the branch states
+        let BranchCounters = getBranchCountersData(branchID)
+        let isCounterOn = isCounterActive(CurrentActivity);
+        let CounterFound = BranchCounters.ActiveCounterIDs.find(function (ID) {
+            return ID == counterID
+        });
+
+        //If the state stayed the same (On-On OR Off-off)
+        let isSameState = (isCounterOn && CounterFound != undefined) || (!isCounterOn && CounterFound == undefined);
+        if (isSameState) {
+            CounterData.availableActions = prepareAvailableActionsForCounter(orgID, branchID, counterID);
+            NumberOfChanged +=1;
+            return common.success;
+        }
+
+        //If the counter changed
+        if (!isCounterOn && CounterFound) {
+            //Remove the Counter from the active counters
+            BranchCounters.ActiveCounterIDs = BranchCounters.ActiveCounterIDs.find(function (ID) {
+                return ID != counterID
+            });
+        }
+        BranchCounters.ActiveCounterIDs = [];
+        BranchData.countersData.forEach(function (counter) {
+            if (isCounterActive(counter.currentState)) {
+                BranchCounters.ActiveCounterIDs.push(counter.id.toString());
+            }
+            counter.availableActions = prepareAvailableActionsForCounter(orgID, branchID, counter.id)
+            NumberOfChanged +=1;
+        });
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
         return common.error;
     }
 }
-
-
-
-module.exports.prepareAvailableActions = prepareAvailableActions;
+module.exports.AfterActionPreperations = AfterActionPreperations;
+module.exports.prepareAvailableActionsForCounter = prepareAvailableActionsForCounter;

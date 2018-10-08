@@ -4,14 +4,154 @@ var common = require("../../common/common");
 var enums = require("../../common/enums");
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
+var workFlowManager = require("./workFlowManager");
 var statisticsManager = require("./statisticsManager");
 var responsePayload = require("../messagePayload/responsePayload");
 var ModuleName = "ExternalData";
+
+function getCounterStatistics(message) {
+    try {
+        var counterInfo = message.payload;
+        let result = common.success;
+        let errors = [];
+        let OrgID = counterInfo["orgid"];
+        let BranchID = counterInfo["branchid"];
+        let CounterID = counterInfo["counterid"];
+        let UserID = counterInfo["userid"];
+        let counter = configurationService.getCounterConfig(CounterID);
+        if (!counter) {
+            return common.error;
+        }
+        let AllocatedSegment = [];
+        workFlowManager.getAllocatedSegments(OrgID, BranchID, CounterID, UserID, AllocatedSegment)
+
+        let AllocatedService = [];
+        workFlowManager.getAllocatedServices(OrgID, BranchID, CounterID, UserID, AllocatedService)
+
+        let statistics = statisticsManager.GetCountersStatistics(BranchID, CounterID, UserID, counter.Hall_ID, AllocatedSegment, AllocatedService);
+
+        let payload = new responsePayload();
+        payload.result = result;
+        payload.statistics = statistics;
+        message.payload = payload;
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
+
+
+function getAllocatedSegments(message) {
+    try {
+
+        var counterInfo = message.payload;
+        let result = common.success;
+        let errors = [];
+        let OrgID = counterInfo["orgid"];
+        let BranchID = counterInfo["branchid"];
+        let CounterID = counterInfo["counterid"];
+        let UserID = counterInfo["userid"];
+
+        let output = [];
+        result = workFlowManager.getAllocatedSegments(OrgID, BranchID, CounterID, UserID, output);
+
+        let payload = new responsePayload();
+        payload.result = result;
+        if (output) {
+            payload.segments = [];
+            output.forEach(function (counterData) {
+                payload.segments.push(counterData);
+            })
+        }
+
+        if (payload.result != common.success) {
+            payload.errorCode = errors.join(",");
+        }
+        message.payload = payload;
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
+function getAllocatedServices(message) {
+    try {
+
+        var counterInfo = message.payload;
+        let result = common.success;
+        let errors = [];
+        let OrgID = counterInfo["orgid"];
+        let BranchID = counterInfo["branchid"];
+        let CounterID = counterInfo["counterid"];
+        let UserID = counterInfo["userID"];
+
+        let output = [];
+        result = workFlowManager.getAllocatedServices(OrgID, BranchID, CounterID, UserID, output)
+
+        let payload = new responsePayload();
+        payload.result = result;
+        if (output) {
+            payload.services = [];
+            output.forEach(function (counterData) {
+                payload.services.push(counterData);
+            })
+        };
+
+        if (payload.result != common.success) {
+            payload.errorCode = errors.join(",");
+        }
+        message.payload = payload;
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
+
+
+
+function getAllCountersStatus(message) {
+    try {
+
+        var counterInfo = message.payload;
+        let result = common.success;
+        let errors = [];
+        let OrgID = counterInfo["orgid"];
+        let BranchID = counterInfo["branchid"];
+
+        let output = [];
+        result = dataService.getBranchCountersData(OrgID, BranchID, output)
+
+        let payload = new responsePayload();
+        payload.result = result;
+        if (output) {
+            output.forEach(function (counterData) {
+                payload.countersInfo.push(counterData);
+            })
+        }
+
+        if (payload.result != common.success) {
+            payload.errorCode = errors.join(",");
+        }
+        message.payload = payload;
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
+
+
 //Get counter status (current ticket and state)
 function getCounterStatus(message) {
     try {
 
-        var counterInfo =  message.payload;
+        var counterInfo = message.payload;
         let result = common.success;
         let errors = [];
         let OrgID = counterInfo["orgid"];
@@ -33,11 +173,11 @@ function getCounterStatus(message) {
         let payload = new responsePayload();
         payload.result = result;
         payload.transactionsInfo.push(CurrentTransaction);
-        payload.countersInfo.push(CurrentActivity);
+        payload.countersInfo.push(CounterData);
         if (payload.result != common.success) {
             payload.errorCode = errors.join(",");
         }
-        message.payload=payload;
+        message.payload = payload;
         return result;
     }
     catch (error) {
@@ -59,6 +199,7 @@ function getHeldCustomers(counterInfo) {
     let CounterID = counterInfo["counterid"];
     result = dataService.getHeldCustomers(OrgID, BranchID, CounterID, output);
     counterInfo.HeldCustomers = output;
+    counterInfo.result = result;
     return result;
 };
 
@@ -83,6 +224,18 @@ var getData = async function (message) {
                     break;
                 case enums.commands.GetCounterStatus:
                     result = await getCounterStatus(message);
+                    break;
+                case enums.commands.GetAllCountersStatus:
+                    result = await getAllCountersStatus(message);
+                    break;
+                case enums.commands.GetAllocatedSegments:
+                    result = await getAllocatedSegments(message);
+                    break;
+                case enums.commands.GetAllocatedServices:
+                    result = await getAllocatedServices(message);
+                    break;
+                case enums.commands.getCounterStatistics:
+                    result = await getCounterStatistics(message);
                     break;
                 default:
                     result = common.error;

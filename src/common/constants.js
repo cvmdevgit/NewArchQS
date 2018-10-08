@@ -22,3 +22,4 @@ module.exports.EnableAutoNext = "EnableAutoNext";
 module.exports.ENABLE_INTER_SEGMENT_TRANSFER = "EnableInterSegmentTransfer";
 module.exports.STRICT_TRANSFER_COUNTER_TO_SAME_HALLS = "StrictTransferCounterToSameHall";
 module.exports.MAX_REQUESTS_PER_VIRTUAL_SERVICE = "MaxVirtualRequestsPerService";
+module.exports.STRICT_TRANSFER_COUNTER_TO_OPEN_COUNTERS_ONLY = "RestrictTransferToCounterToOpenCountersOnly";

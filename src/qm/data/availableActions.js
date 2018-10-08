@@ -6,10 +6,10 @@ class availableActions {
                 this.TransferToCounterAllowed = false;
                 this.TransferCounters = [];
                 this.AddServiceAllowed = false;
-                this.AddServiceEnabledAfter;
+                this.AddServiceEnabledAfter = 0;
                 this.AddServices = [];
                 this.NextAllowed = false;
-                this.NextEnabledAfter;
+                this.NextEnabledAfter = 0;
                 this.HoldAllowed = false;
                 this.OpenAllowed = false;
                 this.BreakAllowed = false;
@@ -18,7 +18,7 @@ class availableActions {
                 this.RecallAllowed = false;
                 this.ListServeAllowed = false;
                 this.ListServeWithAllowed = false;
-                this.MaxAcceptableServiceTime;
+                this.MaxAcceptableServiceTime = 0;
                 this.AutomaticTransferToServiceAllowed = false;
                 this.AutomaticTransferToServiceID = "";
                 this.AddPreServiceAllowed = false;

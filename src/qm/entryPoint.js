@@ -13,11 +13,13 @@ var QueueName = "Queuing";
 let rabbitMQClient = new RabbitMQClient(QueueName, Keys);
 //Start listening to Queuing Queue
 async function initialize() {
-    await queueCommandManager.initialize();
-    await backgroundQSManager.startBackgroundActions();
     rabbitMQClient.receive(processQueuingRequest);
     //Add handler to the broadcast message
     events.broadcastMessage.on('event', broadcastMessage);
+
+    await queueCommandManager.initialize();
+    await backgroundQSManager.startBackgroundActions();
+
 }
 
 //Process the request

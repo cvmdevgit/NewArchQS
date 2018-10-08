@@ -27,7 +27,7 @@ var initialize = async function () {
 
 
 
-        result =await entitiesRepo.initialize();
+        result = await entitiesRepo.initialize();
         await idGenerator.initialize(entitiesRepo.db);
         initialized = true;
         return common.success;
@@ -40,6 +40,7 @@ var initialize = async function () {
 var commit = async function () {
     try {
         await entitiesRepo.commit();
+        return common.success;
     }
     catch (error) {
         logger.logError(error);
@@ -59,6 +60,17 @@ var stop = async function () {
         return common.error;
     }
 };
+var getModifiedEntities = function () {
+    try {
+
+        return entitiesRepo.getModifiedEntities();
+    }
+    catch (error) {
+        logger.logError(error);
+        return undefined;
+    }
+};
+module.exports.getModifiedEntities = getModifiedEntities;
 module.exports.commit = commit;
 module.exports.entitiesRepo = entitiesRepo;
 module.exports.initialize = initialize;

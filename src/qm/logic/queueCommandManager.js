@@ -5,23 +5,25 @@ var logger = require("../../common/logger");
 var enums = require("../../common/enums");
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
+var monitorChangesManager = require("./monitorChangesManager");
 var transactionManager = require("../logic/transactionManager");
 var userActivityManager = require("../logic/userActivityManager");
 var transaction = require("../data/transaction");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
 var statisticsManager = require("./statisticsManager");
 var dataPayloadManager = require("../messagePayload/dataPayloadManager");
-var ModuleName = "Queuing"
+var queuingPreperations = require("./queuingPreperations");
+var ModuleName = "Queuing";
 var initialized = false;
 
 
-var FinishingCommand = async function (BranchID) {
+var FinishingCommand = async function (OrgID, BranchID) {
     try {
-        //Broadcast statistics
-        statisticsManager.broadcastStatistics(BranchID);
+        //Broadcast changes
+        monitorChangesManager.broadcastChanges(OrgID, BranchID);
         //Commit DB Actions
         await repositoriesManager.commit();
-
+        return common.success;
     }
     catch (error) {
         logger.logError(error);
@@ -45,7 +47,7 @@ var issueTicket = async function (message) {
         result = transactionManager.issueSingleTicket(errors, transactioninst);
         //Perpare the response
         dataPayloadManager.setResponsePayload(message, result, errors, [transactioninst], [], []);
-        await FinishingCommand(requestPayload.branchid);
+        await FinishingCommand(requestPayload.orgid, requestPayload.branchid);
         return result;
     }
     catch (error) {
@@ -110,7 +112,7 @@ var counterBreak = async function (message) {
         result = (result == common.success) ? userActivityManager.ChangeCurrentCounterStateForBreak(errors, OrgID, BranchID, CounterID, CountersInfo) : result;
         //Perpare the response
         dataPayloadManager.setResponsePayload(message, result, errors, FinishedTransaction, CountersInfo, []);
-        await FinishingCommand(BranchID);
+        await FinishingCommand(OrgID, BranchID);
         return result;
     }
     catch (error) {
@@ -141,7 +143,7 @@ var counterServeCustomer = async function (message) {
         //Perpare the response
         dataPayloadManager.setResponsePayload(message, result, errors, Transactions, CountersInfo, []);
 
-        await FinishingCommand(BranchID);
+        await FinishingCommand(OrgID, BranchID);
         return result;
     }
     catch (error) {
@@ -172,7 +174,7 @@ var counterHoldCustomer = async function (message) {
         //Perpare the response
         dataPayloadManager.setResponsePayload(message, result, errors, Transactions, CountersInfo, []);
 
-        await FinishingCommand(BranchID);
+        await FinishingCommand(OrgID, BranchID);
         return result;
     }
     catch (error) {
@@ -203,7 +205,7 @@ var counterNext = async function (message) {
         //Perpare the response
         dataPayloadManager.setResponsePayload(message, result, errors, Transactions, CountersInfo, []);
 
-        await FinishingCommand(BranchID);
+        await FinishingCommand(OrgID, BranchID);
         return result;
     }
     catch (error) {
@@ -232,7 +234,7 @@ var counterOpen = async function (message) {
         //Perpare the response
         dataPayloadManager.setResponsePayload(message, result, errors, [], CountersInfo, []);
 
-        await FinishingCommand(BranchID);
+        await FinishingCommand(OrgID, BranchID);
         return result;
     }
     catch (error) {
@@ -251,9 +253,11 @@ var userLogin = function (message) {
         let CounterID = requestPayload.counterid;
         let loginName = requestPayload.loginName;
         let password = requestPayload.password;
-        let Transactions = [];
         let CountersInfo = [];
-        result = userActivityManager.UserLogin(OrgID, BranchID, CounterID, loginName, password)
+        let errors = [];
+        result = userActivityManager.UserLogin(OrgID, BranchID, CounterID, loginName, password,undefined,CountersInfo)
+        //Perpare the response
+        dataPayloadManager.setResponsePayload(message, result, errors, [], CountersInfo, []);
         return result;
     }
     catch (error) {
@@ -356,6 +360,8 @@ var processCommand = async function (message) {
                     result = await counterOpen(message); break;
                 case enums.commands.AddService:
                     result = await addService(message); break;
+                case enums.commands.Login:
+                    result = await userLogin(message); break;
             }
         }
         return result;
@@ -366,7 +372,41 @@ var processCommand = async function (message) {
     }
 };
 
+async function RefreshAvailableActionsForBranch(OrgID, BranchData) {
+    try {
+        if (BranchData && BranchData.countersData) {
+            BranchData.countersData.forEach(function (counter) {
+                {
+                    counter.availableActions = queuingPreperations.prepareAvailableActionsForCounter(OrgID, BranchData.id, counter.id);
+                }
+            });
+        }
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
 
+async function PrepareQueuingData() {
+    try {
+        if (dataService.organizationsData) {
+            dataService.organizationsData.forEach(function (OrgData) {
+                OrgData.branchesData.forEach(function (BranchData) {
+                    RefreshAvailableActionsForBranch(OrgData.id, BranchData)
+                    //Broadcast changes
+                    monitorChangesManager.broadcastChanges(OrgData.id, BranchData.id);
+                });
+            });
+        }
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
 
 //Initialize everything
 var initialize = async function () {
@@ -379,9 +419,15 @@ var initialize = async function () {
             result = await dataService.initialize();
             if (result == common.success) {
                 result = await statisticsManager.initialize();
-                this.initialized = true;
-                console.log("Initialized");
-                return result;
+                if (result == common.success) {
+                    result = await PrepareQueuingData();
+                    let fs = require("fs");
+                    fs.writeFileSync("DataNew.json", JSON.stringify(dataService.organizationsData));
+
+                    this.initialized = true;
+                    console.log("Initialized");
+                    return result;
+                }
             }
         }
     }

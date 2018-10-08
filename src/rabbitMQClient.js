@@ -118,6 +118,29 @@ class rabbitMQClient {
                         resolve(common.error);
                     }
                 });
+                that.channel.consume(that.RPC_Queue_Listener, async function sendReply(msg) {
+                    try {
+                        let payloadBytes = msg.content;
+                        let payload = JSON.parse(payloadBytes.toString());
+                        console.log("Recieve request and send the reply");
+                        await ProcessMessageFunction(payload);
+                        that.channel.sendToQueue(msg.properties.replyTo,
+                            new Buffer(JSON.stringify(payload)),
+                            { correlationId: msg.properties.correlationId });
+
+                        that.channel.ack(msg);
+                        resolve(common.success);
+                    }
+                    catch (error) {
+                        that.channel.sendToQueue(msg.properties.replyTo,
+                            new Buffer(JSON.stringify("")),
+                            { correlationId: msg.properties.correlationId });
+
+                        that.channel.ack(msg);
+                        logger.logError(error);
+                        resolve(common.error);
+                    }
+                });
             }
             catch (error) {
                 logger.logError(error);
@@ -179,6 +202,7 @@ class rabbitMQClient {
     async sendBroadcast(Topic, Message) {
         try {
             let that = this;
+            await this.setConnection();
             return new Promise(function (resolve, reject) {
                 try {
                     that.channel.publish(QS_EXCHANGE, Topic, new Buffer(Message));

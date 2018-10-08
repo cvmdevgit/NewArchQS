@@ -16,7 +16,10 @@ var ReadCommands = {
     branch: "branch",
     counter: "counter",
     segment: "segment",
-    service: "service"
+    service: "service",
+    user: "user",
+    hall: "hall",
+    serviceSegmentPriorityRange: "servicesegmentpriorityrange"
 };
 function isArrayValid(ArrayOfEntities) {
     return ArrayOfEntities && ArrayOfEntities.length > 0;
@@ -105,16 +108,14 @@ var getCommonSettings = function (BranchID, Key) {
         logger.logError(error);
     }
 };
-var getCommonSettingsBool = function (BranchID, Key)
-{
+var getCommonSettingsBool = function (BranchID, Key) {
     let TempString = getCommonSettings(BranchID, Key);
     if (TempString && TempString == "1") {
         return true;
     }
     return false;
 };
-var getCommonSettingsInt = function (BranchID, Key)
-{
+var getCommonSettingsInt = function (BranchID, Key) {
     let TempString = getCommonSettings(BranchID, Key);
     if (TempString && TempString != "") {
         return parseInt(TempString);
@@ -147,6 +148,15 @@ function getBranchConfig(BranchID) {
     });
     return branch;
 }
+function getBranchCountersConfig(BranchID) {
+    //counter Config
+    let counters = configsCache.counters.filter(function (value) {
+        return value.QueueBranch_ID == BranchID;
+    }
+    );
+    return counters;
+}
+
 
 /*eslint complexity: ["error", 100]*/
 async function getBranchServiceAllocation(entities) {
@@ -320,6 +330,10 @@ function ReadCounters(apiMessagePayLoad, Cache) {
     apiMessagePayLoad.counters = Cache.counters.filter(function (value) {
         return value.QueueBranch_ID == apiMessagePayLoad.BranchID && (!apiMessagePayLoad.types || apiMessagePayLoad.types.indexOf(value.Type_LV.toString()) > -1);
     });
+    let ClientCounter_Config = require("./ClientConfigEntities/ClientCounter_Config");
+    if (apiMessagePayLoad.counters) {
+        apiMessagePayLoad.counters = apiMessagePayLoad.counters.map(counter => new ClientCounter_Config(counter));
+    }
     return common.success;
 }
 
@@ -335,18 +349,63 @@ function ReadServices(apiMessagePayLoad, Cache) {
         }
         return false;
     });
+    let ClientService_Config = require("./ClientConfigEntities/ClientService_Config");
+    if (apiMessagePayLoad.services) {
+        apiMessagePayLoad.services = apiMessagePayLoad.services.map(service => new ClientService_Config(service));
+    }
     return common.success;
 }
 function ReadBranches(apiMessagePayLoad, Cache) {
-    apiMessagePayLoad.branches = Cache.branches;
+    apiMessagePayLoad.branches = Cache.branches.filter(function (branch) {
+        return branch.OrgID == apiMessagePayLoad.orgid;
+    });
+    let ClientQueueBranch_config = require("./ClientConfigEntities/ClientQueueBranch_config");
+    if (apiMessagePayLoad.branches) {
+        apiMessagePayLoad.branches = apiMessagePayLoad.branches.map(branch => new ClientQueueBranch_config(branch));
+    }
+    return common.success;
+}
+function ReadServiceSegmentPriorityRanges(apiMessagePayLoad, Cache) {
+    apiMessagePayLoad.serviceSegmentPriorityRanges = Cache.serviceSegmentPriorityRanges.filter(function (serviceSegmentPriorityRange) {
+        return serviceSegmentPriorityRange.OrgID == apiMessagePayLoad.orgid;
+    });
+    let ClientServiceSegmentPriorityRange_Config = require("./ClientConfigEntities/ClientServiceSegmentPriorityRange_Config");
+    if (apiMessagePayLoad.serviceSegmentPriorityRanges) {
+        apiMessagePayLoad.serviceSegmentPriorityRanges = apiMessagePayLoad.serviceSegmentPriorityRanges.map(serviceSegmentPriorityRange => new ClientServiceSegmentPriorityRange_Config(serviceSegmentPriorityRange));
+    }
     return common.success;
 }
 function ReadSegments(apiMessagePayLoad, Cache) {
-    apiMessagePayLoad.segments = Cache.segments;
-    apiMessagePayLoad.serviceSegmentPriorityRanges = Cache.serviceSegmentPriorityRanges;
+    apiMessagePayLoad.segments = Cache.segments.filter(function (segment) {
+        return segment.OrgID == apiMessagePayLoad.orgid;
+    });
+    let ClientSegment_Config = require("./ClientConfigEntities/ClientSegment_Config");
+    if (apiMessagePayLoad.segments) {
+        apiMessagePayLoad.segments = apiMessagePayLoad.segments.map(segment => new ClientSegment_Config(segment));
+    }
     return common.success;
 }
 
+function ReadUsers(apiMessagePayLoad, Cache) {
+    apiMessagePayLoad.users = Cache.users.filter(function (user) {
+        return user.OrgID == apiMessagePayLoad.orgid;
+    });
+    let ClientUser_Config = require("./ClientConfigEntities/ClientUser_Config");
+    if (apiMessagePayLoad.users) {
+        apiMessagePayLoad.users =  apiMessagePayLoad.users.map(user => new ClientUser_Config(user));
+    }
+    return common.success;
+}
+function ReadHalls(apiMessagePayLoad, Cache) {
+    apiMessagePayLoad.halls = Cache.halls.filter(function (hall) {
+        return hall.OrgID == apiMessagePayLoad.orgid && hall.QueueBranch_ID == apiMessagePayLoad.BranchID;
+    });
+    let ClientHall_Config = require("./ClientConfigEntities/ClientHall_Config");
+    if (apiMessagePayLoad.halls) {
+        apiMessagePayLoad.halls = apiMessagePayLoad.halls.map(hall => new ClientHall_Config(hall));
+    }
+    return common.success;
+}
 
 var Read = function (apiMessagePayLoad) {
     try {
@@ -360,7 +419,12 @@ var Read = function (apiMessagePayLoad) {
                     return ReadSegments(apiMessagePayLoad, configsCache)
                 case ReadCommands.service:
                     return ReadServices(apiMessagePayLoad, configsCache);
-
+                case ReadCommands.hall:
+                    return ReadHalls(apiMessagePayLoad, configsCache);
+                case ReadCommands.user:
+                    return ReadUsers(apiMessagePayLoad, configsCache);
+                case ReadCommands.serviceSegmentPriorityRange:
+                    return ReadServiceSegmentPriorityRanges(apiMessagePayLoad, configsCache);
                 default:
                     return common.error;
             }
@@ -485,7 +549,7 @@ var initialize = async function () {
     }
 };
 
-
+module.exports.getBranchCountersConfig = getBranchCountersConfig;
 module.exports.getCommonSettings = getCommonSettings;
 module.exports.getCommonSettingsBool = getCommonSettingsBool;
 module.exports.getCommonSettingsInt = getCommonSettingsInt;

@@ -31,9 +31,9 @@ var updateUserAvitivityInData = function (BracnhData, userActivity) {
     }
 };
 
-var UserLogin = function (OrgID, BranchID, CounterID, loginName, password, clientType) {
+var UserLogin = function (OrgID, BranchID, CounterID, loginName, password, clientType,CountersInfo) {
     try {
-
+        let result = common.success;
         var user = configurationService.configsCache.users.find(function (user) {
             return (user.OrgID == OrgID && user.LoginName == loginName)
         });
@@ -48,20 +48,21 @@ var UserLogin = function (OrgID, BranchID, CounterID, loginName, password, clien
         }
 
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(BranchID);
-        let CounterData = BracnhData.countersData.find(function (counter) {
-            return counter.id == CounterID
-        });
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
+        let CounterData = dataService.getCounterData(BracnhData,CounterID)
+        
         //Error if the counter is not correct
         if (!CounterData) {
             return common.error;
 
         }
         if (!CounterData.currentState) {
-            result = InitializeCounterActivity(OrgID, BranchID, CounterData, enums.EmployeeActiontypes.NotReady);
+            result = InitializeCounterActivity(OrgID, BranchID, CounterData, enums.UserActiontypes.NotReady);
         }
         CounterData.currentState.user_ID = user.ID;
-        return common.success;
+        queuingPreperations.AfterActionPreperations(OrgID, BranchID, CounterID);
+        CountersInfo.push(CounterData);
+        return result;
     }
     catch (error) {
         logger.logError(error);
@@ -74,7 +75,7 @@ var UserLogin = function (OrgID, BranchID, CounterID, loginName, password, clien
 var UpdateActivity = function (userActivity) {
     try {
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(userActivity.branch_ID);
+        let BracnhData = dataService.getBranchData(userActivity.org_ID, userActivity.branch_ID);
         //Update in memory
         let result = updateUserAvitivityInData(BracnhData, userActivity);
         if (result == common.success) {
@@ -99,7 +100,7 @@ var AddActivity = function (userActivity) {
             userActivity.id = idGenerator.getNewID();
         }
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(userActivity.branch_ID);
+        let BracnhData = dataService.getBranchData(userActivity.org_ID, userActivity.branch_ID);
         if (BracnhData != null && BracnhData.userActivitiesData != null) {
             //To Branch Transactions
             BracnhData.userActivitiesData.push(userActivity);
@@ -217,7 +218,7 @@ function InitializeCounterActivity(OrgID, BranchID, CounterData, EmployeeActionT
 var isCounterValidForAutoNext = function (CurrentActivity) {
     try {
         // Change the Current activity
-        if (CurrentActivity && CurrentActivity.type == enums.EmployeeActiontypes.Ready) {
+        if (CurrentActivity && CurrentActivity.type == enums.UserActiontypes.Ready) {
             return true;
         }
         return false;
@@ -240,7 +241,7 @@ var CounterValidationForOpen = function (errors, OrgID, BranchID, CounterID) {
         let result = common.not_valid;
         // Change the Current activity
         if (CurrentActivity) {
-            let ValidStates = [enums.EmployeeActiontypes.Custom, enums.EmployeeActiontypes.Break, enums.EmployeeActiontypes.NotReady]
+            let ValidStates = [enums.UserActiontypes.Custom, enums.UserActiontypes.Break, enums.UserActiontypes.NotReady]
             if (checkIfValueEqualAtLeastOne(CurrentActivity.type, ValidStates)) {
                 result = common.success;
             }
@@ -250,7 +251,7 @@ var CounterValidationForOpen = function (errors, OrgID, BranchID, CounterID) {
             }
         }
         else {
-            result = InitializeCounterActivity(OrgID, BranchID, CounterData, enums.EmployeeActiontypes.Ready);
+            result = InitializeCounterActivity(OrgID, BranchID, CounterData, enums.UserActiontypes.Ready);
         }
         return result;
     }
@@ -279,15 +280,15 @@ var ChangeCurrentCounterStateForOpen = function (errors, OrgID, BranchID, Counte
         //Check for correct type
         if (counter && counter.Type_LV == enums.counterTypes.CustomerServing) {
 
-            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.EmployeeActiontypes.Ready);
+            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.UserActiontypes.Ready);
         }
         else {
-            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.EmployeeActiontypes.NoCallServing);
+            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.UserActiontypes.NoCallServing);
         }
 
         CounterData.currentState = CurrentActivity;
-        CounterData.availableActions = queuingPreperations.prepareAvailableActions(OrgID, BranchID, CounterID);
-        CountersInfo.push(CurrentActivity);
+        queuingPreperations.AfterActionPreperations(OrgID, BranchID, CounterID);
+        CountersInfo.push(CounterData);
         return common.success;
     }
     catch (error) {
@@ -311,7 +312,7 @@ var CounterValidationForBreak = function (errors, OrgID, BranchID, CounterID) {
         let result = common.not_valid;
         // Change the Current activity
         if (CurrentActivity) {
-            let ArrayOfInvalidStates = [enums.EmployeeActiontypes.InsideCalenderLoggedOff, enums.EmployeeActiontypes.OutsideCalenderLoggedOff, enums.EmployeeActiontypes.TicketDispensing, enums.EmployeeActiontypes.Custom, enums.EmployeeActiontypes.Break];
+            let ArrayOfInvalidStates = [enums.UserActiontypes.InsideCalenderLoggedOff, enums.UserActiontypes.OutsideCalenderLoggedOff, enums.UserActiontypes.TicketDispensing, enums.UserActiontypes.Custom, enums.UserActiontypes.Break];
             if (checkIfValueNotEqualAnyValue(CurrentActivity.type, ArrayOfInvalidStates)) {
                 result = common.success;
             }
@@ -321,7 +322,7 @@ var CounterValidationForBreak = function (errors, OrgID, BranchID, CounterID) {
             }
         }
         else {
-            result = InitializeCounterActivity(OrgID, BranchID, CounterData, enums.EmployeeActiontypes.Ready);
+            result = InitializeCounterActivity(OrgID, BranchID, CounterData, enums.UserActiontypes.Ready);
         }
         return result;
     }
@@ -351,7 +352,7 @@ var CounterValidationForHold = function (errors, OrgID, BranchID, CounterID) {
             result = common.not_valid;
         }
         // ths status should be serving
-        if (CurrentActivity && CurrentActivity.type != enums.EmployeeActiontypes.Serving) {
+        if (CurrentActivity && CurrentActivity.type != enums.UserActiontypes.Serving) {
             result = common.not_valid;
         }
         return result;
@@ -383,14 +384,14 @@ var CounterValidationForServe = function (errors, OrgID, BranchID, CounterID) {
 
         // Change the Current activity
         if (CurrentActivity) {
-            let ValidStates = [enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.NoCallServing, enums.EmployeeActiontypes.Ready, enums.EmployeeActiontypes.Serving, enums.EmployeeActiontypes.Processing]
+            let ValidStates = [enums.UserActiontypes.Serving, enums.UserActiontypes.NoCallServing, enums.UserActiontypes.Ready, enums.UserActiontypes.Serving, enums.UserActiontypes.Processing]
             if (checkIfValueEqualAtLeastOne(CurrentActivity.type, ValidStates)) {
                 return common.success;
             }
             return common.not_valid;
         }
         else {
-            return InitializeCounterActivity(OrgID, BranchID, CounterData, enums.EmployeeActiontypes.Ready);
+            return InitializeCounterActivity(OrgID, BranchID, CounterData, enums.UserActiontypes.Ready);
         }
     }
     catch (error) {
@@ -422,7 +423,7 @@ var CounterValidationForNext = function (errors, OrgID, BranchID, CounterID) {
 
         // Change the Current activity
         if (CurrentActivity) {
-            let ArrayOfInvalidStates = [enums.EmployeeActiontypes.InsideCalenderLoggedOff, enums.EmployeeActiontypes.OutsideCalenderLoggedOff, enums.EmployeeActiontypes.NoCallServing, enums.EmployeeActiontypes.TicketDispensing]
+            let ArrayOfInvalidStates = [enums.UserActiontypes.InsideCalenderLoggedOff, enums.UserActiontypes.OutsideCalenderLoggedOff, enums.UserActiontypes.NoCallServing, enums.UserActiontypes.TicketDispensing]
             if (checkIfValueNotEqualAnyValue(CurrentActivity.type, ArrayOfInvalidStates)) {
                 return common.success;
             }
@@ -431,7 +432,7 @@ var CounterValidationForNext = function (errors, OrgID, BranchID, CounterID) {
             }
         }
         else {
-            return InitializeCounterActivity(OrgID, BranchID, CounterData, enums.EmployeeActiontypes.Ready);
+            return InitializeCounterActivity(OrgID, BranchID, CounterData, enums.UserActiontypes.Ready);
         }
     }
     catch (error) {
@@ -456,10 +457,10 @@ var ChangeCurrentCounterStateForBreak = function (errors, OrgID, BranchID, Count
 
         CloseActivity(CurrentActivity);
 
-        CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.EmployeeActiontypes.Break);
+        CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterID, enums.UserActiontypes.Break);
         CounterData.currentState = CurrentActivity;
-        CounterData.availableActions = queuingPreperations.prepareAvailableActions(OrgID, BranchID, CounterID);
-        CountersInfo.push(CurrentActivity);
+        queuingPreperations.AfterActionPreperations(OrgID, BranchID, CounterID);
+        CountersInfo.push(CounterData);
         return common.success;
     }
     catch (error) {
@@ -474,10 +475,10 @@ var firstUserActivity = function (OrgID, BranchID, CounterData) {
     try {
         let CurrentActivity;
         if (CounterData.currentTransaction_ID > 0) {
-            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.EmployeeActiontypes.Serving);
+            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.UserActiontypes.Serving);
         }
         else {
-            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.EmployeeActiontypes.Ready);
+            CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.UserActiontypes.Ready);
         }
         return CurrentActivity;
     }
@@ -490,18 +491,18 @@ var firstUserActivity = function (OrgID, BranchID, CounterData) {
 var updateServingUserActivity = function (OrgID, BranchID, CounterData, CurrentActivity) {
     try {
         if (CounterData.currentTransaction_ID > 0) {
-            if (CurrentActivity.type != enums.EmployeeActiontypes.Serving) {
+            if (CurrentActivity.type != enums.UserActiontypes.Serving) {
                 CloseActivity(CurrentActivity);
-                CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.EmployeeActiontypes.Serving);
+                CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.UserActiontypes.Serving);
             }
             else {
                 CurrentActivity = UpdateActionTime(CurrentActivity);
             }
         }
         else {
-            if (CurrentActivity.type != enums.EmployeeActiontypes.Ready) {
+            if (CurrentActivity.type != enums.UserActiontypes.Ready) {
                 CloseActivity(CurrentActivity);
-                CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.EmployeeActiontypes.Ready);
+                CurrentActivity = CreateNewActivity(OrgID, BranchID, CounterData.id, enums.UserActiontypes.Ready);
             }
             else {
                 CurrentActivity = UpdateActionTime(CurrentActivity);
@@ -535,8 +536,8 @@ var ChangeCurrentCounterStateForNext = function (errors, OrgID, BranchID, Counte
         }
 
         CounterData.currentState = CurrentActivity;
-        CounterData.availableActions = queuingPreperations.prepareAvailableActions(OrgID, BranchID, CounterID);
-        CountersInfo.push(CurrentActivity);
+        queuingPreperations.AfterActionPreperations(OrgID, BranchID, CounterID);
+        CountersInfo.push(CounterData);
         return common.success;
     }
     catch (error) {

@@ -2,6 +2,7 @@ var repositoriesManager = require("../localRepositories/repositoriesManager");
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var constants = require("../../common/constants");
 var events = require("../../common/events");
 var transaction = require("../data/transaction");
 var branchStatisticsData = require("../data/branchStatisticsData");
@@ -124,6 +125,59 @@ var CreateNewstatistics = function (transaction) {
     }
 
 };
+function ValidateStatisticForCounter(Statistics,BranchID, CounterID, UserID, CounterHallID, AllocatedSegment, AllocatedService) {
+    try {
+        let valid = true;
+        //Filter By user or Counter
+        let AllocationType = configurationService.getCommonSettings(BranchID, constants.SERVICE_ALLOCATION_TYPE);
+        if (AllocationType == enums.AllocationTypes.Counter) {
+            if (Statistics.counter_ID > 0 && Statistics.counter_ID != CounterID) {
+                valid = false;
+            }
+        }
+        else {
+            if (Statistics.user_ID > 0 && Statistics.user_ID != UserID) {
+                valid = false;
+            }
+        }
+
+        //Filter using Halls
+        if (Statistics.hall_ID > 0 && Statistics.hall_ID != CounterHallID) {
+            valid = false;
+        }
+        //Filter by allocated segments and services
+        if (AllocatedSegment.indexOf(parseInt(Statistics.segment_ID)) < 0 || AllocatedService.indexOf(parseInt(Statistics.service_ID)) < 0) {
+            valid = false;
+        }
+        return valid;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+
+}
+function GetCountersStatistics(BranchID, CounterID, UserID, CounterHallID, AllocatedSegment, AllocatedService) {
+    try {
+        let t_Statistics = [];
+        if (!BranchID || !CounterID || !UserID || !CounterHallID || !AllocatedSegment || !AllocatedService) {
+            return undefined;
+        }
+
+        let branch_statistics = getBranchStatisticsData(BranchID);
+        if (branch_statistics) {
+            //if the branch exists
+            t_Statistics = branch_statistics.statistics.filter(function (Statistic) {
+                return ValidateStatisticForCounter(Statistic,BranchID, CounterID, UserID, CounterHallID, AllocatedSegment, AllocatedService)
+            });
+        }
+        return t_Statistics;
+    }
+    catch (error) {
+        logger.logError(error);
+        return undefined;
+    }
+}
 var GetHallsStatistics = function (BranchID, Hall_IDs) {
     try {
         let hall_statistics = [];
@@ -365,15 +419,14 @@ function getBranchStatisticsData(BranchID) {
     }
 }
 
-function shouldStatisticAdded(tStatistics,FilterStatistics)
-{
+function shouldStatisticAdded(tStatistics, FilterStatistics) {
     let Addit = true;
     //Check the filters
-    Addit = (FilterStatistics.segment_ID > 0 && (FilterStatistics.segment_ID != tStatistics.segment_ID)) ? false: Addit;
-    Addit = (FilterStatistics.service_ID > 0 && (FilterStatistics.service_ID != tStatistics.service_ID)) ? false: Addit;
-    Addit = (FilterStatistics.counter_ID > 0 && (FilterStatistics.counter_ID != tStatistics.counter_ID)) ? false: Addit;
-    Addit = (FilterStatistics.hall_ID > 0 && (FilterStatistics.hall_ID != tStatistics.hall_ID)) ? false: Addit;
-    Addit = (FilterStatistics.user_ID > 0 && (FilterStatistics.user_ID != tStatistics.user_ID)) ? false: Addit;
+    Addit = (FilterStatistics.segment_ID > 0 && (FilterStatistics.segment_ID != tStatistics.segment_ID)) ? false : Addit;
+    Addit = (FilterStatistics.service_ID > 0 && (FilterStatistics.service_ID != tStatistics.service_ID)) ? false : Addit;
+    Addit = (FilterStatistics.counter_ID > 0 && (FilterStatistics.counter_ID != tStatistics.counter_ID)) ? false : Addit;
+    Addit = (FilterStatistics.hall_ID > 0 && (FilterStatistics.hall_ID != tStatistics.hall_ID)) ? false : Addit;
+    Addit = (FilterStatistics.user_ID > 0 && (FilterStatistics.user_ID != tStatistics.user_ID)) ? false : Addit;
     return Addit;
 }
 
@@ -384,7 +437,7 @@ function calculateBranchStatistics(statistics, FilterStatistics) {
         if (statistics) {
             for (let i = 0; i < statistics.length; i++) {
                 let tStatistics = statistics[i];
-                if (shouldStatisticAdded(tStatistics,FilterStatistics)) {
+                if (shouldStatisticAdded(tStatistics, FilterStatistics)) {
                     SumStatistics(TotalStatistics, tStatistics);
                 }
             }
@@ -416,6 +469,9 @@ var GetSpecificStatistics = function (FilterStatistics) {
     }
 
 };
+
+/*
+TO BE REMOVED
 function broadcastStatistics(BranchID)
 {
     try{
@@ -438,10 +494,10 @@ function broadcastStatistics(BranchID)
         return common.error;
     }
 }
-
+*/
 
 module.exports.ModuleName = "Statistics";
-module.exports.broadcastStatistics = broadcastStatistics;
+module.exports.GetCountersStatistics = GetCountersStatistics;
 module.exports.GetHallsStatistics = GetHallsStatistics;
 module.exports.GetSpecificStatistics = GetSpecificStatistics;
 module.exports.AddOrUpdateTransaction = AddOrUpdateTransaction;

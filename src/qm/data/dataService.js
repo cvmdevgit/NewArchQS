@@ -3,13 +3,15 @@ var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
 var branchData = require("./branchData");
+var organizationData = require("./organizationData");
 var visitData = require("./visitData");
 var counterData = require("./counterData");
 var transaction = require("./transaction");
 var userActivity = require("./userActivity");
 var configurationService = require("../configurations/configurationService");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
-var branchesData = [];
+var organizationsData = [];
+var initialize = false;
 
 function getCounterData(BracnhData, CounterID) {
     try {
@@ -22,10 +24,13 @@ function getCounterData(BracnhData, CounterID) {
                 }
             }
             if (!CounterData) {
-                let tcounterData = new counterData();
-                tcounterData.id = CounterID;
-                BracnhData.countersData.push(tcounterData);
-                CounterData = BracnhData.countersData[BracnhData.countersData.length - 1];
+                let counterExist = configurationService.getCounterConfig(CounterID);
+                if (counterExist) {
+                    let tcounterData = new counterData();
+                    tcounterData.id = CounterID;
+                    BracnhData.countersData.push(tcounterData);
+                    CounterData = BracnhData.countersData[BracnhData.countersData.length - 1];
+                }
             }
         }
         return CounterData;
@@ -35,7 +40,6 @@ function getCounterData(BracnhData, CounterID) {
         return undefined;
     }
 }
-
 
 function getCurrentActivity(BracnhData, CounterData) {
     try {
@@ -94,7 +98,7 @@ async function cacheBranchUserActivities(branch) {
         if (DBuserActivities) {
             //Convert it to javascript entity
             for (let i = 0; i < DBuserActivities.length; i++) {
-                let t_userActivity =  new userActivity(DBuserActivities[i]);
+                let t_userActivity = new userActivity(DBuserActivities[i]);
                 branch.userActivitiesData.push(t_userActivity);
             }
             //Set the user activities on the counter data
@@ -113,7 +117,6 @@ async function cacheBranchUserActivities(branch) {
 
             }
         }
-
     }
     catch (error) {
         logger.logError(error);
@@ -123,7 +126,7 @@ async function cacheBranchUserActivities(branch) {
 
 async function getTodaysTransactionFromDB(branchID) {
     try {
-        let Now =  new Date;
+        let Now = new Date;
         let Today = Now.setHours(0, 0, 0, 0);
         let transactionsData = [];
         //Get only the transactions for the day
@@ -171,18 +174,19 @@ function AddorUpdateVisitData(branchData, transaction) {
 }
 
 
-function SetCounterDataUsingTransaction(branch,transaction)
-{
-    try{
+function SetCounterDataUsingTransaction(branch, transaction) {
+    try {
         if (transaction.counter_ID > 0) {
             let CurrentCounterData = getCounterData(branch, transaction.counter_ID)
             if (CurrentCounterData) {
                 CurrentCounterData.currentTransaction_ID = transaction.id;
+                CurrentCounterData.currentTransaction = transaction;
             }
             else {
                 CurrentCounterData = new counterData();
                 CurrentCounterData.id = transaction.counter_ID;
                 CurrentCounterData.currentTransaction_ID = transaction.id;
+                CurrentCounterData.currentTransaction = transaction;
                 branch.countersData.push(CurrentCounterData);
             }
         }
@@ -213,6 +217,26 @@ async function cacheBranchTransactions(branch) {
     }
 }
 
+function CreateOrUpdateOrgCache(OrgID, pOrganizationData) {
+    if (!pOrganizationData) {
+        pOrganizationData = new organizationData();
+        pOrganizationData.id = OrgID;
+        pOrganizationData.branchesData = []
+        organizationsData.push(pOrganizationData);
+    }
+    return pOrganizationData;
+}
+
+function getOrgData(OrgID) {
+    if (!initialize) {
+        return;
+    }
+    var organizationData = organizationsData.find(function (value) {
+        return parseInt(value.id) == parseInt(OrgID);
+    });
+    return organizationData;
+}
+
 //Cache Server Configs from DB
 var cacheData = async function () {
     try {
@@ -220,11 +244,14 @@ var cacheData = async function () {
         let BranchesConfig = configurationService.configsCache.branches;
         if (BranchesConfig != null && BranchesConfig.length > 0) {
             for (let i = 0; i < BranchesConfig.length; i++) {
+                let BranchConf = BranchesConfig[i];
+                let OrgData = getOrgData(BranchConf.OrgID);
+                OrgData = CreateOrUpdateOrgCache(BranchConf.OrgID, OrgData);
                 let branch = new branchData();
-                branch.id = BranchesConfig[i].ID;
+                branch.id = BranchConf.ID;
                 await cacheBranchUserActivities(branch);
                 await cacheBranchTransactions(branch);
-                branchesData.push(branch);
+                OrgData.branchesData.push(branch);
             }
         }
         return result;
@@ -234,11 +261,15 @@ var cacheData = async function () {
         return common.error;
     }
 };
-function getBranchData(BranchID)
-{
-    var branchData = branchesData.find(function (value) {
-        return value.id == BranchID;
-    });
+function getBranchData(OrgID, BranchID) {
+    let OrgData = getOrgData(OrgID);
+    let branchData ;
+    if (OrgData && OrgData.branchesData)
+    {
+        branchData = OrgData.branchesData.find(function (value) {
+            return value.id == BranchID;
+        });
+    }
     return branchData;
 }
 function getHeldCustomers(OrgID, BranchID, CounterID, output) {
@@ -250,7 +281,7 @@ function getHeldCustomers(OrgID, BranchID, CounterID, output) {
         let CurrentTransaction;
 
         //Get Branch Data
-        BracnhData = getBranchData(BranchID);
+        BracnhData = getBranchData(OrgID, BranchID);
         let heldTransactions = BracnhData.transactionsData.filter(function (transaction) {
             return transaction.state == enums.StateType.OnHold && transaction.heldByCounter_ID == CounterID;;
         });
@@ -269,6 +300,25 @@ function getHeldCustomers(OrgID, BranchID, CounterID, output) {
 }
 
 
+
+//Get Branches Data
+function getBranchCountersData(OrgID, BranchID, output) {
+    try {
+        //Get Branch Data
+        BracnhData = getBranchData(OrgID, BranchID);
+        if (BracnhData.countersData) {
+            BracnhData.countersData.forEach(function (counterData) {
+                output.push(counterData);
+            })
+        }
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
+
 //Get the Branch Data and counter data then the current Activity
 function getCurrentData(OrgID, BranchID, CounterID, output) {
     try {
@@ -279,8 +329,8 @@ function getCurrentData(OrgID, BranchID, CounterID, output) {
         let CurrentTransaction;
 
         //Get Branch Data
-        BracnhData = getBranchData(BranchID);
-        
+        BracnhData = getBranchData(OrgID, BranchID);
+
         //Get current State
         CounterData = getCounterData(BracnhData, CounterID);
 
@@ -304,6 +354,7 @@ var initialize = async function () {
         let result = await repositoriesManager.initialize();
         if (result == common.success) {
             result = await cacheData();
+            initialize = true;
         }
         return result;
     }
@@ -324,10 +375,47 @@ var stop = async function () {
     }
 };
 
+//Check the previous data with the new one
+function isCounterChanged(CounterData) {
+    if (CounterData.availableActions) {
+        let CheckSumData = {
+            availableActions: CounterData.availableActions,
+        }
+        let _CurrentCheckSum = JSON.stringify(CheckSumData);
+        if (CounterData._CheckSum != _CurrentCheckSum) {
+            CounterData._CheckSum = _CurrentCheckSum;
+            return true;
+        }
+        return false;
+    }
+}
+//Check for counter checked States
+var getChangedCounters = function (BranchData, countersInfo) {
+    try {
+        let ChangedCounters;
+        if (BranchData) {
+            ChangedCounters = BranchData.countersData.filter(function (counter) {
+                return isCounterChanged(counter);
+            });
+        }
+        if (ChangedCounters) {
+            ChangedCounters.forEach(function (item) {
+                countersInfo.push(item);
+            })
+        }
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
 
+
+module.exports.getChangedCounters = getChangedCounters;
+module.exports.getBranchCountersData = getBranchCountersData;
 module.exports.getCurrentActivity = getCurrentActivity;
 module.exports.getCurrentTransaction = getCurrentTransaction;
-
 module.exports.getBranchData = getBranchData;
 module.exports.getHeldCustomers = getHeldCustomers;
 module.exports.getCounterData = getCounterData;
@@ -335,4 +423,4 @@ module.exports.AddorUpdateVisitData = AddorUpdateVisitData;
 module.exports.getCurrentData = getCurrentData;
 module.exports.stop = stop;
 module.exports.initialize = initialize;
-module.exports.branchesData = branchesData;
+module.exports.organizationsData = organizationsData;

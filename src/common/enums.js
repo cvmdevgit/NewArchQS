@@ -1,4 +1,4 @@
-const EmployeeActiontypes = {
+const UserActiontypes = {
     LoggedIn: 1,
     NotReady: 2,
     Ready: 3,
@@ -73,9 +73,14 @@ const commands = {
     Break: "break",
     Open: "open",
     Read: "read",
+    Login: "login",
     ReadBranchStatistics: "readBranchStatistics",
     GetCounterStatus: "getCounterStatus",
-    GetHeldCustomers:"getHeldCustomers"
+    GetHeldCustomers:"getHeldCustomers",
+    GetAllCountersStatus: "getAllCountersStatus",
+    GetAllocatedSegments: "getAllocatedSegments",
+    GetAllocatedServices: "getAllocatedServices",
+    getCounterStatistics: "getCounterStatistics"
 };
 
 const counterTypes = {
@@ -95,7 +100,7 @@ module.exports.AllocationTypes = AllocationTypes;
 module.exports.counterTypes = counterTypes;
 module.exports.OriginType = OriginType;
 module.exports.SegmentAllocationType = SegmentAllocationType;
-module.exports.EmployeeActiontypes = EmployeeActiontypes;
+module.exports.UserActiontypes = UserActiontypes;
 module.exports.StateType = StateType;
 module.exports.CustomerServingType = CustomerServingType;
 module.exports.commands = commands;

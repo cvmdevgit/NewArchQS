@@ -2,7 +2,7 @@
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
-var constants  = require("../../common/constants");
+var constants = require("../../common/constants");
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
 var transactionManager = require("../logic/transactionManager");
@@ -11,9 +11,8 @@ var queueCommandManager = require("./queueCommandManager");
 var message = require("../../dataMessage/message");
 var autoNextID;
 
-function getReadyCountersActivities(branchData)
-{
-    try{
+function getReadyCountersActivities(branchData) {
+    try {
         let readyCountersActivities;
         if (branchData.userActivitiesData && branchData.transactionsData && branchData.transactionsData.length) {
             readyCountersActivities = branchData.userActivitiesData.filter(function (value) {
@@ -41,7 +40,7 @@ var performAutoNextForBranch = async function (branchData) {
                     branchid: branchData.id.toString()
                 };
                 let _message = new message();
-                _message.payload=counterInfo;
+                _message.payload = counterInfo;
                 queueCommandManager.counterNext(_message);
             }
         }
@@ -62,14 +61,17 @@ var automaticNext = async function () {
         let errors = [];
         //Automatic next
         if (queueCommandManager.initialized) {
-            if (dataService.branchesData && dataService.branchesData.length > 0) {
-                for (let iBranch = 0; iBranch < dataService.branchesData.length; iBranch++) {
-                    let branchData = dataService.branchesData[iBranch];
-                    let EnableAutoNext = configurationService.getCommonSettings(branchData.id, constants.EnableAutoNext);
-                    if (EnableAutoNext == "1") {
-                        performAutoNextForBranch(branchData);
+            if (dataService.organizationsData && dataService.organizationsData.length > 0) {
+                dataService.organizationsData.forEach(function (OrgData) {
+                    let branchesData = OrgData.branchesData;
+                    for (let iBranch = 0; iBranch < branchesData.length; iBranch++) {
+                        let branchData = branchesData[iBranch];
+                        let EnableAutoNext = configurationService.getCommonSettings(branchData.id, constants.EnableAutoNext);
+                        if (EnableAutoNext == "1") {
+                            performAutoNextForBranch(branchData);
+                        }
                     }
-                }
+                });
             }
         }
         //let duration = (Date.now() - date1) / 1000;
@@ -84,7 +86,7 @@ var automaticNext = async function () {
 };
 
 
-var startBackgroundActions = async function (ticketInfo) {
+var startBackgroundActions = async function () {
     try {
         if (!autoNextID) {
             autoNextID = setInterval(automaticNext, 5000);
@@ -96,7 +98,7 @@ var startBackgroundActions = async function (ticketInfo) {
         return common.error;
     }
 };
-var stopBackgroundActions = async function (ticketInfo) {
+var stopBackgroundActions = async function () {
     try {
         clearInterval(autoNextID);
         autoNextID = undefined;

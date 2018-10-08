@@ -25,6 +25,18 @@ class statisticsData {
 
         //this.SentToServer;
 
+        /*
+        //Check Changed Properities
+        this._CheckSum = "";
+        this._Checkchanged = function () {
+            let _Checkchanged = JSON.stringify(this);
+            if (this._CheckSum != _Checkchanged) {
+                this._CheckSum = _Checkchanged;
+                return true;
+            }
+            return false;
+        }
+        */
     }
 }
 module.exports = statisticsData;

@@ -67,9 +67,39 @@ class transaction {
             this.dispensedByUser_ID = INT_NULL;
             this.dispensedByCounter_ID = INT_NULL;
             this.assignedByCounter_ID = INT_NULL;
-
-            this._StatisticsData = undefined;
         }
+        /*
+        //Check Changed Properities
+        this._CheckSum = "";
+        this._Checkchanged = function () {
+            let trans = {
+                id: this.id,
+                ticketSequence: this.ticketSequence,
+                symbol: this.symbol,
+                state: this.state,
+                branch_ID: this.branch_ID,
+                segment_ID: this.segment_ID,
+                hall_ID: this.hall_ID,
+                counter_ID: this.counter_ID,
+                user_ID: this.user_ID,
+                service_ID: this.service_ID,
+                state: this.state,
+                servingType: this.servingType,
+                waitingSeconds: this.waitingSeconds,
+                serviceSeconds: this.serviceSeconds,
+                holdingSeconds: this.holdingSeconds,
+                lastCallTime: this.lastCallTime,
+                endServingTime: this.endServingTime,
+                closeTime: this.closeTime
+            }
+            let _Checkchanged = JSON.stringify(trans);
+            if (this._CheckSum != _Checkchanged) {
+                this._CheckSum = _Checkchanged;
+                return true;
+            }
+            return false;
+        }
+        */
     }
 
     clone(transaction) {
@@ -77,7 +107,7 @@ class transaction {
         this.org_ID = transaction.org_ID;
         this.branch_ID = transaction.branch_ID;
 
-        this.ticketSequence = transaction.ticketSequence;
+        this.ticketSequence = parseInt(transaction.ticketSequence);
         this.symbol = transaction.symbol;
         this.service_ID = transaction.service_ID;
         this.segment_ID = transaction.segment_ID;

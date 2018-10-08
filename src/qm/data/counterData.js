@@ -6,9 +6,13 @@ class counterData {
         this.lockStateTime;
         this.currentState;      //this is a state and the user used in, can be replaced by current user ID and state
         this.currentTransaction_ID;  //the transaction ID serving
+        this.currentTransaction;  //the transaction serving
         this.availableActions = new AvailableActions();
         this.allocatedServices = [];
         this.allocatedSegments = [];
+
+        //Check Changed Properities
+        this._CheckSum = "";
     }
 }
 module.exports = counterData;
