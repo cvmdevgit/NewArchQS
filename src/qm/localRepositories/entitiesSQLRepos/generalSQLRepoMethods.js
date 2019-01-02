@@ -1,5 +1,6 @@
 var logger = require("../../../common/logger");
 var common = require("../../../common/common");
+var sql = require("mssql");
 var procedureParameter = require("../procedureParameter");
 
 function getEntityAttributes(entity) {
@@ -43,4 +44,5 @@ async function remove(db, tableName, ID) {
 };
 
 
+module.exports.remove = remove;
 module.exports.getAll = getAll;

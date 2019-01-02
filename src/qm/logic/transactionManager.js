@@ -28,7 +28,7 @@ function UpdateTransactionInBranchData(BracnhData, transaction) {
 }
 
 //Update Transaction
-var UpdateTransaction = function (RequestID, transaction) {
+function UpdateTransaction(RequestID, transaction) {
     try {
         if (!RequestID) {
             logger.logError("empty request ID");
@@ -60,7 +60,7 @@ var UpdateTransaction = function (RequestID, transaction) {
 };
 
 //Add or Update Transaction
-var AddTransaction = function (RequestID, transaction) {
+function AddTransaction(RequestID, transaction) {
     try {
         if (!RequestID) {
             logger.logError("empty request ID");
@@ -141,7 +141,7 @@ function getBestHallFromStatistics(branch_ID, HallsToVerfify) {
 
 
 //Get Hall Number
-var getHallID = function (transaction, pAllHalls, pAllocatedHalls) {
+function getHallID(transaction, pAllHalls, pAllocatedHalls) {
     try {
         let Hall_ID;
         //Branch Config
@@ -184,7 +184,7 @@ var getHallID = function (transaction, pAllHalls, pAllocatedHalls) {
 };
 
 //Formate the ticket number with range properities
-var prepareDisplayTicketNumber = function (transaction, PriorityRangeMaxNo, Separator) {
+function prepareDisplayTicketNumber(transaction, PriorityRangeMaxNo, Separator) {
     try {
         let FormattedTicketNumber = "";
         let displayTicketNumber = "";
@@ -219,12 +219,12 @@ var prepareDisplayTicketNumber = function (transaction, PriorityRangeMaxNo, Sepa
     }
 };
 
-var timeProirityValue = function (transaction) {
+function timeProirityValue(transaction) {
     //Return the priority of this transaction; using priority time and priority
     return ((commonMethods.Now() - transaction.priorityTime) * transaction.priority * 1000);
 };
 
-var holdCurrentCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, HoldReason_ID, HeldTransactions) {
+function holdCurrentCustomer(errors, RequestID, OrgID, BranchID, CounterID, HoldReason_ID, HeldTransactions) {
     try {
         let result = common.error;
         let output = [];
@@ -306,7 +306,7 @@ function closeTransaction(BracnhData, CurrentCustomerTransaction) {
         return common.error;
     }
 }
-var finishCurrentCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, FinishedTransaction) {
+function finishCurrentCustomer(errors, RequestID, OrgID, BranchID, CounterID, FinishedTransaction) {
     try {
         let output = [];
         //Get Branch Data
@@ -441,7 +441,7 @@ function CreateAddServiceTransaction(ServiceID, OriginalTransaction, AddedServic
     }
 }
 
-var addService = function (errors, RequestID, OrgID, BranchID, CounterID, ServiceID, resultArgs) {
+function addService(errors, RequestID, OrgID, BranchID, CounterID, ServiceID, resultArgs) {
     try {
         let result = common.error;
         let FinishedTransaction = [];
@@ -495,7 +495,7 @@ function UpdateTransactionToStartServing(NextCustomerTransaction, CounterID) {
     }
 }
 
-var serveCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, TransactionID, resultArgs) {
+function serveCustomer(errors, RequestID, OrgID, BranchID, CounterID, TransactionID, resultArgs) {
     try {
 
         let NextCustomerTransaction = new transaction();
@@ -545,72 +545,6 @@ var serveCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, Tra
         return common.error;
     }
 };
-
-
-function getAllocatedSegments(branch, counter) {
-    try {
-        var allocated_segments = [];
-        var isAllSegments_Allocated = (counter.SegmentAllocationType == enums.SegmentAllocationType.SelectAll);
-
-        //Get Allocated Segments
-        if (!isAllSegments_Allocated && branch.segmentsAllocations && branch.segmentsAllocations.length > 0) {
-            allocated_segments = branch.segmentsAllocations.filter(function (value) {
-                return value.Counter_ID == counter.ID;
-            }
-            );
-        }
-        return allocated_segments;
-    }
-    catch (error) {
-        logger.logError(error);
-        return [];
-    }
-}
-
-function getAllocatedServices(branch, counter) {
-    try {
-        //Get Allocated Service
-        let allocated_services = branch.servicesAllocations.filter(function (value) {
-            return value.Counter_ID == counter.ID;
-        }
-        );
-        return allocated_services;
-    }
-    catch (error) {
-        logger.logError(error);
-        return [];
-    }
-}
-function isTransactionAllocated(segment_ID, service_ID, isAllSegments_Allocated, allocated_segments, allocated_services) {
-    try {
-        let tSegment;
-        let tService;
-        let servable = false;
-        if (isAllSegments_Allocated) {
-            tSegment = segment_ID;
-        }
-        if (!isAllSegments_Allocated && allocated_segments && allocated_segments.length > 0) {
-            tSegment = allocated_segments.find(function (segment) {
-                return segment.Segment_ID == segment_ID;
-            }
-            );
-        }
-        if (allocated_services && allocated_services.length > 0) {
-            tService = allocated_services.find(function (service) {
-                return service.Service_ID == service_ID;
-            }
-            );
-        }
-        if (tSegment && tService) {
-            servable = true;
-        }
-        return servable;
-    }
-    catch (error) {
-        logger.logError(error);
-        return false;
-    }
-}
 
 function isTransactionServable(transaction_Data, counter) {
     try {
@@ -819,37 +753,72 @@ function validateCounterTransfferedTransaction(BranchConfig, ToCounterConfig, tr
     }
 }
 
-var transferToCounter = function (errors, RequestID, OrgID, BranchID, CounterID, ToCounterID, Transactions) {
+function getBranchandCounterDataConfigs(errors, OrgID, BranchID, CounterID, Output) {
     try {
-        let CurrentCustomerTransaction;
-        let result = common.error;
-        //Get Branch Data
-        let BracnhData = dataService.getBranchData(OrgID, BranchID);
 
         //Branch Config
-        let branchConfig = configurationService.getBranchConfig(BranchID);
+        let BranchConfig = configurationService.getBranchConfig(BranchID);
 
-        let CounterConfig = configurationService.getCounterConfig(CounterID);
-        let ToCounterConfig = configurationService.getCounterConfig(ToCounterID);
-
-
-        if (!branchConfig || !BracnhData) {
+        if (!BranchConfig) {
             errors.push("Invalid Branch ID");
             return common.error;
         }
 
-        if (!CounterConfig || !ToCounterConfig) {
+
+        //Get Branch Data
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
+
+
+        let CounterConfig = configurationService.getCounterConfig(CounterID);
+
+        if (!CounterConfig) {
             errors.push("Invalid counter(s) ID From or TO");
             return common.error;
         }
 
-        let NewTransaction = new transaction();
         //get counter data
-        let Current_Counter_Data;
-        Current_Counter_Data = dataService.getCounterData(BracnhData, CounterID)
+        let CounterData = dataService.getCounterData(BracnhData, CounterID);
 
 
+        Output.push(BranchConfig);
+        Output.push(BracnhData);
+        Output.push(CounterConfig);
+        Output.push(CounterData);
+
+
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
+
+function transferToCounter(errors, RequestID, OrgID, BranchID, CounterID, ToCounterID, Transactions) {
+    try {
+
+        let result = common.error;
+        let Output = [];
+        //Get Branch and counter configs and data
+        result = getBranchandCounterDataConfigs(errors, OrgID, BranchID, CounterID, Output)
+        if (result != common.success) {
+            return result;
+        }
+
+        //Get Branch Data
+        let BranchConfig = Output[0];
+        let BracnhData = Output[1];
+        let CounterConfig = Output[2];
+        let Current_Counter_Data = Output[3];
+        let ToCounterConfig = configurationService.getCounterConfig(ToCounterID);
+
+        if (!ToCounterConfig) {
+            errors.push("Invalid counter(s) ID From or TO");
+            return common.error;
+        }
+        let NewTransaction = new transaction();
         if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
+            let CurrentCustomerTransaction;
             CurrentCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
                 return transaction_Data.id == Current_Counter_Data.currentTransaction.id;
             }
@@ -864,12 +833,12 @@ var transferToCounter = function (errors, RequestID, OrgID, BranchID, CounterID,
             NewTransaction.transferredFromService_ID = CurrentCustomerTransaction.service_ID;
             NewTransaction.priority = CurrentCustomerTransaction.priority;
 
-            result = calculateTransactionSegmentAndPriority(branchConfig, ToCounterConfig, NewTransaction);
+            result = calculateTransactionSegmentAndPriority(BranchConfig, ToCounterConfig, NewTransaction);
             if (result == common.success) {
                 NewTransaction.hall_ID = ToCounterConfig.Hall_ID;
                 NewTransaction.counter_ID = ToCounterID;
                 NewTransaction.origin = enums.OriginType.TransferToCounter;
-                result = validateCounterTransfferedTransaction(branchConfig, ToCounterConfig, NewTransaction);
+                result = validateCounterTransfferedTransaction(BranchConfig, ToCounterConfig, NewTransaction);
                 //TODO Add pre-service to the transfer
                 if (result == common.success) {
                     //set serving counter and add transaction
@@ -929,7 +898,9 @@ function checkIfFormNeeded(OrgID, BranchID, ServiceID) {
     }
     return common.success;
 }
-var transferToService = function (errors, RequestID, OrgID, BranchID, CounterID, ServiceID, Parameters, Transactions) {
+
+
+function transferToService(errors, RequestID, OrgID, BranchID, CounterID, ServiceID, Parameters, Transactions) {
     try {
         let result = common.error;
         let ServiceConfig = configurationService.getService(ServiceID);
@@ -949,27 +920,23 @@ var transferToService = function (errors, RequestID, OrgID, BranchID, CounterID,
             return result;
         }
 
-        let CurrentCustomerTransaction;
-        //Get Branch Data
-        let BracnhData = dataService.getBranchData(OrgID, BranchID);
-
-        //Branch Config
-        let branchConfig = configurationService.getBranchConfig(BranchID);
-
-        let CounterConfig = configurationService.getCounterConfig(CounterID);
-
-        if (!CounterConfig) {
-            errors.push("Invalid counter(s) ID From or TO");
-            return common.error;
+        let Output = [];
+        //Get Branch and counter configs and data
+        result = getBranchandCounterDataConfigs(errors, OrgID, BranchID, CounterID, Output)
+        if (result != common.success) {
+            return result;
         }
+
+        //Get Branch Data
+        let BranchConfig = Output[0];
+        let BracnhData = Output[1];
+        let CounterConfig = Output[2];
+        let Current_Counter_Data = Output[3];
+
+
         let NewTransaction = new transaction();
-        //get counter data
-        let Current_Counter_Data;
-        Current_Counter_Data = dataService.getCounterData(BracnhData, CounterID)
-
-
         if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
-            CurrentCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
+            let CurrentCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
                 return transaction_Data.id == Current_Counter_Data.currentTransaction.id;
             }
             );
@@ -982,7 +949,7 @@ var transferToService = function (errors, RequestID, OrgID, BranchID, CounterID,
             NewTransaction.transferredFromService_ID = CurrentCustomerTransaction.service_ID;
             NewTransaction.priority = CurrentCustomerTransaction.priority;
 
-            result = calculateTransactionSegmentAndPriority(branchConfig, CounterConfig, NewTransaction);
+            result = calculateTransactionSegmentAndPriority(BranchConfig, CounterConfig, NewTransaction);
             if (result == common.success) {
                 //Get hall ID 
                 let All_Halls = [];
@@ -994,7 +961,7 @@ var transferToService = function (errors, RequestID, OrgID, BranchID, CounterID,
                     NewTransaction.hall_ID = BestHall_ID;
                 }
                 NewTransaction.origin = enums.OriginType.TransferToService;
-                result = validateServiceTransfferedTransaction(branchConfig, NewTransaction);
+                result = validateServiceTransfferedTransaction(BranchConfig, NewTransaction);
                 //TODO Add pre-service to the transfer
                 if (result == common.success) {
                     //set serving counter and add transaction
@@ -1016,7 +983,7 @@ var transferToService = function (errors, RequestID, OrgID, BranchID, CounterID,
 
 
 //Get Next Customer
-var getNextCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, resultArgs) {
+function getNextCustomer(errors, RequestID, OrgID, BranchID, CounterID, resultArgs) {
     try {
 
         let NextCustomerTransaction = new transaction();
@@ -1376,7 +1343,7 @@ function getTransactionSequence(PriorityRange, transaction) {
 
 
 //Issue ticket
-var issueSingleTicket = function (errors, RequestID, transaction) {
+function issueSingleTicket(errors, RequestID, transaction) {
     try {
         let result = common.error;
         let now = commonMethods.Now();
