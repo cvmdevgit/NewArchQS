@@ -93,6 +93,24 @@ var AddTransaction = function (RequestID, transaction) {
 
 };
 
+function finishAddingTransaction(RequestID, Transaction) {
+    try {
+        //Set serving counters and Users 
+        let result = workFlowManager.setServingProperitiesOnTransaction(Transaction);
+        if (result == common.success) {
+            //Create on Database
+            result = AddTransaction(RequestID, Transaction);
+        }
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        errors.push(error.toString());
+        return common.error;
+    }
+}
+
+
 function getBestHallFromStatistics(branch_ID, HallsToVerfify) {
     try {
         let Hall_ID;
@@ -213,7 +231,7 @@ var holdCurrentCustomer = function (errors, RequestID, OrgID, BranchID, CounterI
         //Get Max Seq
         let Now = commonMethods.Now();
         //Get Branch Data
-        dataService.getCurrentData(OrgID, BranchID, CounterID, output) ;
+        dataService.getCurrentData(OrgID, BranchID, CounterID, output);
         let BracnhData = output[0];
         let Current_Counter_Data = output[1];
         let CurrentCustomerTransaction = output[3];
@@ -221,7 +239,7 @@ var holdCurrentCustomer = function (errors, RequestID, OrgID, BranchID, CounterI
         if (!BracnhData || !Current_Counter_Data) {
             return result;
         }
-       
+
         //Get the transactions that can be served
         if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
             //Finish Serving the previous Ticket if exists
@@ -292,8 +310,8 @@ var finishCurrentCustomer = function (errors, RequestID, OrgID, BranchID, Counte
     try {
         let output = [];
         //Get Branch Data
-        dataService.getCurrentData(OrgID, BranchID, CounterID, output) ;
-        let BracnhData =  output[0];
+        dataService.getCurrentData(OrgID, BranchID, CounterID, output);
+        let BracnhData = output[0];
         let Current_Counter_Data = output[1];
         let CurrentActivity = output[2];
         let CurrentCustomerTransaction = output[3];
@@ -423,7 +441,6 @@ function CreateAddServiceTransaction(ServiceID, OriginalTransaction, AddedServic
     }
 }
 
-
 var addService = function (errors, RequestID, OrgID, BranchID, CounterID, ServiceID, resultArgs) {
     try {
         let result = common.error;
@@ -436,10 +453,8 @@ var addService = function (errors, RequestID, OrgID, BranchID, CounterID, Servic
             let AddedServiceTransaction = new transaction();
             result = CreateAddServiceTransaction(ServiceID, OriginalTransaction, AddedServiceTransaction);
             if (result == common.success) {
-                //Set serving counters and Users 
-                result = workFlowManager.setServingProperitiesOnTransaction(AddedServiceTransaction);
-                //Create on Database
-                result = AddTransaction(RequestID, AddedServiceTransaction);
+                //set serving counter and add transaction
+                result = finishAddingTransaction(RequestID, AddedServiceTransaction);
                 if (result == common.success) {
                     //Start serving the new transaction
                     result = serveCustomer(errors, RequestID, OrgID, BranchID, CounterID, AddedServiceTransaction.id, resultArgs)
@@ -857,11 +872,9 @@ var transferToCounter = function (errors, RequestID, OrgID, BranchID, CounterID,
                 result = validateCounterTransfferedTransaction(branchConfig, ToCounterConfig, NewTransaction);
                 //TODO Add pre-service to the transfer
                 if (result == common.success) {
-                    //Set serving counters and Users 
-                    result = workFlowManager.setServingProperitiesOnTransaction(NewTransaction);
+                    //set serving counter and add transaction
+                    result = finishAddingTransaction(RequestID, NewTransaction);
                     Transactions.push(NewTransaction);
-                    //Create on Database
-                    result = AddTransaction(RequestID, NewTransaction);
                 }
             }
 
@@ -984,12 +997,10 @@ var transferToService = function (errors, RequestID, OrgID, BranchID, CounterID,
                 result = validateServiceTransfferedTransaction(branchConfig, NewTransaction);
                 //TODO Add pre-service to the transfer
                 if (result == common.success) {
-                    //Set serving counters and Users 
-                    result = workFlowManager.setServingProperitiesOnTransaction(NewTransaction);
-
+                    //set serving counter and add transaction
+                    result = finishAddingTransaction(RequestID, NewTransaction);
                     Transactions.push(NewTransaction);
-                    //Create on Database
-                    result = AddTransaction(RequestID, NewTransaction);
+
                 }
             }
             return result;
@@ -1387,13 +1398,8 @@ var issueSingleTicket = function (errors, RequestID, transaction) {
         //Get Max Seq
         transaction.ticketSequence = getTransactionSequence(PriorityRange, transaction);
         transaction.displayTicketNumber = prepareDisplayTicketNumber(transaction, PriorityRange.MaxSlipNo, Separators[PriorityRange.Separator_LV]);
-
-        //Set serving counters and Users 
-        result = workFlowManager.setServingProperitiesOnTransaction(transaction);
-        if (result == common.success) {
-            //Create on Database
-            result = AddTransaction(RequestID, transaction);
-        }
+        //set serving counter and add transaction
+        result = finishAddingTransaction(RequestID, transaction);
         return result;
     }
     catch (error) {
