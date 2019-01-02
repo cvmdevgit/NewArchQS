@@ -11060,4 +11060,80 @@
     at entitiesRepo.Add (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:93:29)
     at c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:174:49
     at process._tickCallback (internal/process/next_tick.js:68:7)
+14:53:39 02/01/2019
+ReferenceError: logger is not defined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at Object.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\userActivitySQLRepo.js:66:16)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:53:39 02/01/2019
+TypeError: Cannot read property 'result' of undefined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at entitiesRepo.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:27:16)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:53:39 02/01/2019
+Failed to intialize queue command manager retry after 30 seconds
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at reInitializeQueuingService (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\logic\queueCommandManager.js:530:16)
+    at Object.initialize (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\logic\queueCommandManager.js:561:9)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:54:14 02/01/2019
+TypeError: Cannot read property 'result' of undefined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at entitiesRepo.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:27:16)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:54:14 02/01/2019
+ReferenceError: generalSQLRepoMethods is not defined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at Object.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\generalSQLRepoMethods.js:23:16)
+    at Object.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\userActivitySQLRepo.js:63:44)
+    at entitiesRepo.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:18:39)
+    at getALLUserActivitiesFromDB (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\data\dataService.js:85:61)
+    at cacheData (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\data\dataService.js:287:28)
+    at Object.initialize (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\data\dataService.js:494:28)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:54:14 02/01/2019
+Failed to intialize queue command manager retry after 30 seconds
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at reInitializeQueuingService (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\logic\queueCommandManager.js:530:16)
+    at Object.initialize (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\logic\queueCommandManager.js:561:9)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:54:44 02/01/2019
+ReferenceError: generalSQLRepoMethods is not defined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at Object.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\generalSQLRepoMethods.js:23:16)
+    at Object.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\userActivitySQLRepo.js:63:44)
+    at entitiesRepo.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:18:39)
+    at getALLUserActivitiesFromDB (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\data\dataService.js:85:61)
+    at cacheData (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\data\dataService.js:287:28)
+    at Object.initialize (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\data\dataService.js:494:28)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:54:44 02/01/2019
+TypeError: Cannot read property 'result' of undefined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at entitiesRepo.getAll (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:27:16)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:54:44 02/01/2019
+Failed to intialize queue command manager retry after 30 seconds
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at reInitializeQueuingService (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\logic\queueCommandManager.js:530:16)
+    at Timeout.initialize [as _onTimeout] (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\logic\queueCommandManager.js:561:9)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
 

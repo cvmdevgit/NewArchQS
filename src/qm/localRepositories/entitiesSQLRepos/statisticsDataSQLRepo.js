@@ -7,13 +7,6 @@ var RepoEntity = new (require("../../data/statisticsData"));
 var tableName = "T_StatisticsData";
 var sql = require("mssql");
 
-function getEntityAttributes(entity) {
-    let attributes = Object.getOwnPropertyNames(entity).filter(function (value) { return !value.startsWith("_"); });
-    let attributesStr = attributes.join(",");
-    return attributesStr;
-}
-
-
 function fillParameters(params, entity) {
     try {
 
@@ -69,10 +62,7 @@ var AddorUpdate = async function (db, entity) {
 
 var getAll = async function (db) {
     try {
-        let attributesStr = generalSQLRepoMethods.getEntityAttributes(RepoEntity);
-        let sql = "SELECT " + attributesStr + " FROM " + tableName;
-        let sqlResult = await db.all(sql);
-        return sqlResult;
+        return await generalSQLRepoMethods.getAll(db, tableName, RepoEntity);
     }
     catch (error) {
         logger.logError(error);

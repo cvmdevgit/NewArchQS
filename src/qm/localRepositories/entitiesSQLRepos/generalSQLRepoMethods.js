@@ -1,3 +1,5 @@
+var logger = require("../../../common/logger");
+var common = require("../../../common/common");
 function getEntityAttributes(entity) {
     let attributesStr = "";
     let attributes = Object.getOwnPropertyNames(entity).filter(function (value) { return !value.startsWith("_"); });
@@ -9,4 +11,18 @@ function getEntityAttributes(entity) {
     }
     return attributesStr;
 }
-module.exports.getEntityAttributes = getEntityAttributes;
+
+async function getAll(db, tableName, RepoEntity) {
+    try {
+        let attributesStr = getEntityAttributes(RepoEntity);
+        let sql = "SELECT " + attributesStr + " FROM " + tableName;
+        let sqlResult = await db.all(sql);
+        return sqlResult;
+    }
+    catch (error) {
+        logger.logError(error);
+        return undefined;
+    }
+};
+
+module.exports.getAll = getAll;

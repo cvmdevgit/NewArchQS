@@ -60,10 +60,7 @@ var AddorUpdate = async function (db, p_UserActivity) {
 
 var getAll = async function (db) {
     try {
-        let attributesStr = generalSQLRepoMethods.getEntityAttributes(RepoEntity);
-        let sql = "SELECT " + attributesStr + " FROM " + tableName;
-        let sqlResult = await db.all(sql);
-        return sqlResult;
+        return await generalSQLRepoMethods.getAll(db, tableName, RepoEntity);
     }
     catch (error) {
         logger.logError(error);
