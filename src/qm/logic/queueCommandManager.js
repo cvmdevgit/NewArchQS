@@ -536,12 +536,9 @@ var reInitializeQueuingService = async function () {
     }
 }
 
-//Initialize everything
-var initialize = async function () {
-    try {
-        if (ServiceStatus.status == enums.ServiceStatuses.Working) {
-            return common.success;
-        }
+var initializeServices = async function ()
+{
+    try{
         let result = await configurationService.initialize();
         if (result == common.success) {
             result = await dataService.initialize();
@@ -549,16 +546,31 @@ var initialize = async function () {
                 result = await statisticsManager.initialize();
                 if (result == common.success) {
                     result = await PrepareQueuingData();
-                    let fs = require("fs");
+                    //let fs = require("fs");
                     //fs.writeFileSync("DataNew.json", JSON.stringify(dataService.organizationsData));
-
                     ServiceStatus.status = enums.ServiceStatuses.Working;
                     console.log("Intialize queue command manager successfully");
-                    return result;
                 }
             }
         }
-        reInitializeQueuingService();
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
+
+//Initialize everything
+var initialize = async function () {
+    try {
+        if (ServiceStatus.status == enums.ServiceStatuses.Working) {
+            return common.success;
+        }
+        let result = await initializeServices();
+        if (result != common.success) {
+            await reInitializeQueuingService();
+        }
         return result;
     }
     catch (error) {
