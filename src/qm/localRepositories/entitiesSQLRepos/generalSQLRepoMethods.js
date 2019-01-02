@@ -1,5 +1,7 @@
 var logger = require("../../../common/logger");
 var common = require("../../../common/common");
+var procedureParameter = require("../procedureParameter");
+
 function getEntityAttributes(entity) {
     let attributesStr = "";
     let attributes = Object.getOwnPropertyNames(entity).filter(function (value) { return !value.startsWith("_"); });
@@ -24,5 +26,21 @@ async function getAll(db, tableName, RepoEntity) {
         return undefined;
     }
 };
+
+
+async function remove(db, tableName, ID) {
+    try {
+        let params = [];
+        params.push(new procedureParameter('ID', ID, sql.BigInt, false));
+        let sqlCommand = " delete from " + tableName + " where id = @ID";
+        let sqlResult = await db.run(sqlCommand, params);
+        return sqlResult;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
+
 
 module.exports.getAll = getAll;

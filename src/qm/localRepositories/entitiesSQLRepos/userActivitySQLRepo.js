@@ -70,11 +70,7 @@ var getAll = async function (db) {
 
 var remove = async function (db, ID) {
     try {
-        let params = [];
-        params.push(new procedureParameter('ID', ID, sql.BigInt, false));
-        let sqlCommand = " delete from " + tableName + " where id = @ID";
-        let sqlResult = await db.run(sqlCommand, params);
-        return sqlResult;
+        return await generalSQLRepoMethods.remove(db, tableName, ID);
     }
     catch (error) {
         logger.logError(error);
