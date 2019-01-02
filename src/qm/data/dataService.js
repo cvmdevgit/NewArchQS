@@ -21,12 +21,7 @@ function getCounterData(BracnhData, CounterID) {
     try {
         let CounterData;
         if (BracnhData && BracnhData.countersData) {
-            for (let i = 0; i < BracnhData.countersData.length; i++) {
-                if (BracnhData.countersData[i].id == CounterID) {
-                    CounterData = BracnhData.countersData[i];
-                    break;
-                }
-            }
+            CounterData = BracnhData.countersData.find(function (Data){ return Data.id == CounterID; });
             if (!CounterData) {
                 let counterExist = configurationService.getCounterConfig(CounterID);
                 if (counterExist) {
@@ -114,19 +109,15 @@ async function cacheBranchUserActivities(AllUserActivities, branch) {
     try {
 
         //Get user activities
-        let userActivities = AllUserActivities.filter(function (activity) {
+        branch.userActivitiesData = AllUserActivities.filter(function (activity) {
             return isValidUserActivity(activity, branch);
         });
 
-        if (userActivities) {
-            //Convert it to javascript entity
-            for (let i = 0; i < userActivities.length; i++) {
-                let t_userActivity = userActivities[i];
-                branch.userActivitiesData.push(t_userActivity);
-            }
+        if (branch.userActivitiesData) {
             //Set the user activities on the counter data
             for (let i = 0; i < branch.userActivitiesData.length; i++) {
                 let UserActivity = branch.userActivitiesData[i];
+                //Set current counter
                 let CurrentCounterData = getCounterData(branch, UserActivity.counter_ID)
                 if (CurrentCounterData) {
                     CurrentCounterData.currentState = UserActivity;
@@ -139,6 +130,10 @@ async function cacheBranchUserActivities(AllUserActivities, branch) {
                 }
 
             }
+        }
+        else
+        {
+            branch.userActivitiesData = [];
         }
     }
     catch (error) {
