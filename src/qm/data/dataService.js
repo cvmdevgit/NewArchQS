@@ -21,7 +21,7 @@ function getCounterData(BracnhData, CounterID) {
     try {
         let CounterData;
         if (BracnhData && BracnhData.countersData) {
-            CounterData = BracnhData.countersData.find(function (Data){ return Data.id == CounterID; });
+            CounterData = BracnhData.countersData.find(function (Data) { return Data.id == CounterID; });
             if (!CounterData) {
                 let counterExist = configurationService.getCounterConfig(CounterID);
                 if (counterExist) {
@@ -131,8 +131,7 @@ async function cacheBranchUserActivities(AllUserActivities, branch) {
 
             }
         }
-        else
-        {
+        else {
             branch.userActivitiesData = [];
         }
     }
@@ -342,18 +341,35 @@ function getHeldCustomers(OrgID, BranchID, CounterID, output) {
     }
 }
 
+function isValidWaitingTransaction(AllocatedSegment, AllocatedService, transaction) {
+    try {
+        let waitingStates = [enums.StateType.Pending, enums.StateType.PendingRecall];
+        if (waitingStates.indexOf(parseInt(transaction.state)) > -1 && AllocatedService.indexOf(parseInt(transaction.service_ID)) > -1 && AllocatedSegment.indexOf(parseInt(transaction.segment_ID)) > -1) {
+            return true;
+        }
+        return false;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+}
+
 function isCustomerWaitingOnCounter(CounterID, AllocatedSegment, AllocatedService, transaction) {
     try {
+        //If the transaction on hold
         if (transaction.state == enums.StateType.OnHold && transaction.heldByCounter_ID == CounterID) {
             return true;
         }
 
+        //if the transaction is not on the same hall
         let counter = configurationService.getCounterConfig(CounterID);
         if (!counter || counter.Hall_ID.toString() != transaction.hall_ID.toString()) {
             return false;
         }
-        let waitingStates = [enums.StateType.Pending, enums.StateType.PendingRecall];
-        if (waitingStates.indexOf(parseInt(transaction.state)) > -1 && AllocatedService.indexOf(parseInt(transaction.service_ID)) > -1 && AllocatedSegment.indexOf(parseInt(transaction.segment_ID)) > -1) {
+
+        //If it is serable and allocated on counter
+        if (isValidWaitingTransaction(AllocatedSegment, AllocatedService, transaction)) {
             if (transaction.counter_ID == null || transaction.counter_ID == CounterID) {
                 return true;
             }
