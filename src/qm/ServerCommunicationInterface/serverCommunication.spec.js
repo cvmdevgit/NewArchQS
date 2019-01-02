@@ -26,7 +26,6 @@ sinon.stub(request, 'get').callsFake(async function (args, callback) {
         let AllowedEntities = ["QueueBranch", "Service", "Counter", "Hall", "Segment", "ServiceConfig"
             , "ServiceSegmentPriorityRange", "User", "CommonConfig", "PriorityRange", "ServiceWorkflow"
             , "ServiceAllocation", "SegmentAllocation"];
-        console.log("######################## Mock Data ###########################################");
         let result = common.success;
         let rawUrl = args.url;
         let parsedUrl = url.parse(rawUrl);
@@ -45,7 +44,7 @@ sinon.stub(request, 'get').callsFake(async function (args, callback) {
         }
         let body = JSON.stringify(response);
         callback("", response, body);
-        return common.success;
+        return result;
     }
     catch (error) {
         console.log(error);
@@ -81,6 +80,11 @@ describe('Server Interface Tests', function () {
         let data = [];
         let result = await serverCommunication.callGetEntitiesAPI(common.settings.OrgID, "QueueBranch", "", [], data);
         result.should.equal(common.success);
+    });
+    it('Get invalid entity failed', async function () {
+        let data = [];
+        let result = await serverCommunication.callGetEntitiesAPI(common.settings.OrgID, "InvalidEntity", "", [], data);
+        result.should.equal(common.error);
     });
     it('Get branches from server with active filter successfully', async function () {
         let data = [];

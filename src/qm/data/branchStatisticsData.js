@@ -1,6 +1,6 @@
 class branchStatisticsData {
     constructor() {
-        this.branch_ID;
+        this.queueBranch_ID;
         this.statistics=[];
  }
 }

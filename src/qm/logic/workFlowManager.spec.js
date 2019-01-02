@@ -1,11 +1,12 @@
 "use strict";
+var rewire = require("rewire");
 delete require.cache[require.resolve("./workFlowManager")];
 delete require.cache[require.resolve("./statisticsManager")];
 delete require.cache[require.resolve("./queueCommandManager")];
 var workFlowManagerInject = require("./workFlowManager.SpecInject");
 var statisticsManager = require("./statisticsManager");
 var queueCommandManager = require("./queueCommandManager");
-var WorkFlowManager = require("./workFlowManager");
+var WorkFlowManager = rewire("./workFlowManager");
 var common = require("../../common/common");
 var should = require("should");
 var mocha = require("mocha");
@@ -15,6 +16,7 @@ const OrgID = "1";
 const BranchID = "106";
 const SegmentID = "325";
 const ServiceID = "364";
+const ServiceID2 = "113";
 const Invalid_BranchID = "106123";
 const Invalid_ServiceID = "36422";
 const CounterID = "120";
@@ -25,6 +27,8 @@ should.toString();
 
 beforeEach(async function () {
     workFlowManagerInject.initialize();
+    WorkFlowManager.__set__('dataService', workFlowManagerInject.dataService);
+    WorkFlowManager.__set__('configurationService', workFlowManagerInject.configurationService);
 });
 
 describe('WorkFlow Manager Test', async function () {
@@ -229,12 +233,12 @@ describe('WorkFlow Manager Test', async function () {
     it('Prepare Transfer Services List Enable Inter Segment Transfer', async function () {
         workFlowManagerInject.setEnableInterSegmentTransfer(BranchID, "1");
         let ServiceList = await WorkFlowManager.PrepareTransferServicesList(OrgID, BranchID, CounterID);
-        (ServiceList != undefined && ServiceList.length == 0).should.true();
+        (ServiceList != undefined && ServiceList.length > 0).should.true();
     });
     it('Prepare Transfer Services List Disable Inter Segment Transfer', async function () {
         workFlowManagerInject.setEnableInterSegmentTransfer(BranchID, "0");
         let ServiceList = await WorkFlowManager.PrepareTransferServicesList(OrgID, BranchID, CounterID);
-        (ServiceList != undefined && ServiceList.length == 0).should.true();
+        (ServiceList != undefined && ServiceList.length > 0).should.true();
     });
 
     //Get Allocated Segments
@@ -262,7 +266,7 @@ describe('WorkFlow Manager Test', async function () {
     });
     it('Get Allocated Segments on counter ' + CounterID + ' failed with empty counter and empty user', async function () {
         let output = [];
-        let result = WorkFlowManager.getAllocatedSegments(OrgID, Invalid_BranchID, undefined , undefined , output);
+        let result = WorkFlowManager.getAllocatedSegments(OrgID, Invalid_BranchID, undefined, undefined, output);
         (result == common.error).should.true();
     });
     //Get Allocated Services
@@ -283,8 +287,23 @@ describe('WorkFlow Manager Test', async function () {
     });
     it('Get Allocated Services on counter ' + CounterID + ' failed with empty counter and empty user', async function () {
         let output = [];
-        let result = WorkFlowManager.getAllocatedServices(OrgID, Invalid_BranchID, undefined , undefined , output);
+        let result = WorkFlowManager.getAllocatedServices(OrgID, Invalid_BranchID, undefined, undefined, output);
         (result == common.error).should.true();
+    });
+
+
+    it('Get Disabled Services due to max limit on serving counters without any service limitation', async function () {
+        let BranchData = workFlowManagerInject.dataService.getBranchData(OrgID, BranchID);
+        let DisabledService = WorkFlowManager.getDisabledServiceDueToMaxServingLimit(BranchData);
+        (DisabledService && DisabledService.length == 0).should.true();
+    });
+
+    it('Get Disabled Services due to max limit on serving counters with a service limited to 3 counters serving', async function () {
+        workFlowManagerInject.setAllTransactionsToserving(OrgID, BranchID)
+        workFlowManagerInject.setServiceMaxNumberOfcounter(WorkFlowManager, BranchID, ServiceID2, 3)
+        let BranchData = workFlowManagerInject.dataService.getBranchData(OrgID, BranchID);
+        let DisabledService = WorkFlowManager.getDisabledServiceDueToMaxServingLimit(BranchData);
+        (DisabledService && DisabledService.length > 0).should.true();
     });
 });
 

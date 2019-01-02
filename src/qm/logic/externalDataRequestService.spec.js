@@ -31,6 +31,8 @@ console.log("externalDataRequestService.spec.js");
 should.toString();
 
 beforeEach(async function () {
+    externalDataRequestService.__set__("dataService",externalDataRequestServicespecInject.dataService);
+    externalDataRequestService.__set__("configurationService",externalDataRequestServicespecInject.configurationService);
     await externalDataRequestServicespecInject.initialize();
     externalDataRequestService.__set__("statisticsManager",externalDataRequestServicespecInject.statisticsManager);
 });
@@ -243,8 +245,6 @@ describe('External Data Service Test', function () {
             orgid: OrgID,
             branchid: BranchID,
             counterid: CounterID,
-            languageindex: "0",
-            origin: "0"
         };
         let message = {
             topicName: "getHeldCustomers",
@@ -253,8 +253,20 @@ describe('External Data Service Test', function () {
         let result = externalDataRequestService.getData(message);
         (result === common.success).should.true();
     });
-
-
+    it('Get counter waiting customers for CES counter ' + CounterID , async function () {
+        let apiMessagePayLoad = {
+            orgid: OrgID,
+            branchid: BranchID,
+            counterid: CounterID,
+            userid: "2"
+        };
+        let message = {
+            topicName: "getWaitingCustomers",
+            payload: apiMessagePayLoad
+        };
+        let result = externalDataRequestService.getData(message);
+        (result === common.success).should.true();
+    });
 
     it('Get counter Allocated Segments', async function () {
 

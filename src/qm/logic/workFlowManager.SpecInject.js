@@ -67,14 +67,12 @@ function removeTransaction(orgID, branchID, counterID) {
     CounterData = output[1];
     CurrentActivity = output[2];
     CurrentTransaction = output[3];
-    CounterData.currentTransaction_ID = undefined;
     CounterData.currentTransaction = undefined;
 }
 function removeAllCountersTransaction(orgID, branchID, counterID) {
     let BranchData = dataService.getBranchData(orgID, branchID);
     BranchData.countersData.filter(function (counter) {
         if (counter.id != counterID) {
-            counter.currentTransaction_ID = undefined;
             counter.currentTransaction = undefined;
         }
     });
@@ -149,6 +147,33 @@ function removeServicesAllocationFromOtherCounter(orgID, branchID, counterID) {
 function setEnableInterSegmentTransfer(branchID, value) {
     setCommonSettings(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER, value);
 }
+
+function setAllTransactionsToserving(orgID, branchID) {
+    let BranchData = dataService.getBranchData(orgID, branchID);
+  
+    BranchData.transactionsData[0].state=enums.StateType.Serving;
+    BranchData.transactionsData[1].state=enums.StateType.Serving;
+    BranchData.transactionsData[2].state=enums.StateType.Serving;
+    BranchData.transactionsData[3].state=enums.StateType.Serving;
+    BranchData.transactionsData[4].state=enums.StateType.Serving;
+    BranchData.transactionsData[5].state=enums.StateType.Serving;
+}
+
+function setServiceMaxNumberOfcounter(WorkFlowManager, branchID,service_ID,MaxCounterNumber) {
+    let Workflow = WorkFlowManager.getWorkFlow(branchID, service_ID);
+    let workflowRecord = configurationService.configsCache.serviceWorkFlow.find(function (Item) {
+        return Item.QueueBranch_ID == branchID && Item.Service_ID == service_ID;
+    });
+
+    Workflow.EnableLimitMaxCounter = "1";
+    Workflow.MaxCounterNumber = MaxCounterNumber;
+
+    workflowRecord.WorkflowObject =Workflow;
+}
+
+
+module.exports.setAllTransactionsToserving = setAllTransactionsToserving;
+module.exports.setServiceMaxNumberOfcounter = setServiceMaxNumberOfcounter;
 module.exports.setRestrictToOpenCountersOnly = setRestrictToOpenCountersOnly;
 module.exports.setEnableInterSegmentTransfer = setEnableInterSegmentTransfer;
 module.exports.removeServicesAllocationFromOtherCounter = removeServicesAllocationFromOtherCounter;
@@ -164,3 +189,6 @@ module.exports.initialize = initialize;
 module.exports.setInvalidWorkFlow = setInvalidWorkFlow;
 module.exports.removeTransaction = removeTransaction;
 module.exports.setCounterToBreak = setCounterToBreak;
+module.exports.dataService = dataService;
+module.exports.configurationService = configurationService;
+

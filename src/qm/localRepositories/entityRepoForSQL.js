@@ -1,96 +1,27 @@
 //set DB connection
 //do counter functions of user table on the DB
+const format = require('string-format');
 var logger = require("../../common/logger");
 var common = require("../../common/common");
-var idGenerator = require("./idGenerator");
-var sqlDB = require("./aa-sql");
+var sqlDB = require("./sqlConnector");
 var fs = require("fs");
-const table_Prefex = "t_";
+const c_Repo_Format = "./entitiesSQLRepos/{0}SQLRepo";
+
 //collections for update
-var updateEntities = [];
-var addEntities = [];
+var uncommittedEntities = [];
+var updateModifiedEntities = [];
 
-
-var PrepareUpdate = function (entity, attributes) {
+var getAll = async function (entity, EntityList) {
     try {
-        //Prepare the values array
-        let UpdateAttributes = "";
-        for (let i = 0; i < attributes.length; i++) {
-            UpdateAttributes = UpdateAttributes + attributes[i].toString() + "= \'" + entity[attributes[i].toString()] + "\'";
-            if (i != (attributes.length - 1)) {
-                UpdateAttributes = UpdateAttributes + ",";
-            }
+        let RepoModule = format(c_Repo_Format,entity.constructor.name);
+        let SQLRepo = require(RepoModule);
+        let sqlResult = await SQLRepo.getAll(this.db);
+        if (sqlResult.result == common.success && sqlResult.recordsets) {
+            sqlResult.recordsets.forEach(function(record) {
+                EntityList.push(record);
+            });
         }
-        return UpdateAttributes;
-    }
-    catch (error) {
-        logger.logError(error);
-        return "";
-    }
-};
-
-//Prepare Values for insert or update
-var GetValuesFromObject = function (entity, attributes) {
-    try {
-        //Prepare the values array
-        let values = "";
-        for (let i = 0; i < attributes.length; i++) {
-            let Startsep = "";
-            let Endsep = "";
-            /*if (typeof entity[attributes[i].toString()] == 'string')
-            {
-                Startsep="\'";
-                Endsep="\'";
-            } */
-            Startsep = "\'";
-            Endsep = "\'";
-            values = values + Startsep + entity[attributes[i].toString()] + Endsep;
-            if (i != (attributes.length - 1)) {
-                values = values + ",";
-            }
-        }
-        return values;
-    }
-    catch (error) {
-        logger.logError(error);
-        return "";
-    }
-};
-
-
-//Create columns for sql lite query
-var GetFilterColumnsFromObject = function (filterKeys, filterValues) {
-    try {
-        let filter = " ";
-        for (let i = 0; i < filterKeys.length; i++) {
-            if (Array.isArray(filterValues[i])) {
-                let values = filterValues[i].join(",");
-                filter = filter + filterKeys[i] + " in (" + values + ") ";
-            }
-            else {
-                filter = filter + filterKeys[i] + " = " + filterValues[i];
-            }
-            if (i != (filterKeys.length - 1)) {
-                filter = filter + " and ";
-            }
-        }
-        return filter;
-    }
-    catch (error) {
-        logger.logError(error);
-        return "";
-    }
-};
-
-
-
-var getAll = async function (entity) {
-    let that = this.db;
-    try {
-        let tableName = table_Prefex + entity.constructor.name;
-        let sql = "SELECT * FROM " + tableName;
-        let entities = await that.all(sql);
-        return entities;
+        return sqlResult.result;
     }
     catch (error) {
         logger.logError(error);
@@ -98,41 +29,14 @@ var getAll = async function (entity) {
     }
 };
 
-
-
-var getFilterBy = async function (entity, filterKeys, filterValues) {
-    let that = this.db;
-    try {
-        if (filterKeys != null && filterKeys != undefined && filterKeys.length > 0 && filterKeys.length == filterValues.length) {
-            let filter = GetFilterColumnsFromObject(filterKeys, filterValues);
-            let tableName = table_Prefex + entity.constructor.name;
-            let sql = "SELECT * FROM " + tableName + " where " + filter;
-            let entities = await that.all(sql);
-            return entities;
-        }
-        else {
-            return await this.getAll();
-        }
-    }
-    catch (error) {
-        logger.logError(error);
-        return undefined;
-    }
-};
-
+//Delete from DB
 var remove = async function (entity) {
     try {
-        let that = this.db;
         if (entity) {
-            //Do the Query
-
-            let tableName = table_Prefex + entity.constructor.name;
-            let sql = " delete from " + tableName + " where id = \'" + entity.id + "\'";
-            let isSuccess = await that.run(sql);
-            if (isSuccess) {
-                return common.success;
-            }
-
+            let RepoModule = format(c_Repo_Format,entity.constructor.name);
+            let SQLRepo = require(RepoModule);
+            let sqlResult = await SQLRepo.remove(this.db, entity.id);
+            return sqlResult.result;
         }
         return common.error;
     }
@@ -142,58 +46,40 @@ var remove = async function (entity) {
     }
 };
 
+//Delete all from DB
 var clear = async function (entity) {
     try {
-        let that = this.db;
-        if (entity) {
-            //Do the Query
 
-            let tableName = table_Prefex + entity.constructor.name;
-            let sql = " delete from " + tableName;
-            let isSuccess = await that.run(sql);
-            if (isSuccess) {
-                return common.success;
-            }
-            else {
-                return common.error;
-            }
-        }
-        else {
-            return common.error;
-        }
-
+        let RepoModule = format(c_Repo_Format,entity.constructor.name);
+        let SQLRepo = require(RepoModule);
+        let sqlResult = await SQLRepo.clear(this.db);
+        return sqlResult.result;
     }
     catch (error) {
         logger.logError(error);
         return common.error;
     }
 };
+
+//Add or Update
+var AddorUpdateEntity = async function (db, entity) {
+    try {
+        let RepoModule = format(c_Repo_Format,entity.constructor.name);
+        let SQLRepo = require(RepoModule);
+        let sqlResult = await SQLRepo.AddorUpdate(db, entity);
+        return sqlResult.result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
 
 var Update = async function (entity) {
     try {
         let that = this.db;
-        if (entity) {
-            let attributes = Object.getOwnPropertyNames(entity).filter(function (value) { return !value.startsWith("_"); });
-            let tableName = table_Prefex + entity.constructor.name;
-
-            //Prepare the values array
-            let UpdateAttributes = PrepareUpdate(entity, attributes);
-
-            //Do the Query
-            let sql = "update  " + tableName + "  set " + UpdateAttributes + " where id = \'" + entity.id + "\'";
-            let isSuccess = await that.run(sql);
-            if (isSuccess) {
-                //await idGenerator.UpdateSeqOnDB(that);
-                return common.success;
-            }
-            else {
-                return common.error;
-            }
-        }
-        else {
-            return common.error;
-        }
-
+        let result =  await AddorUpdateEntity(that, entity);
+        return result;
     }
     catch (error) {
         logger.logError(error);
@@ -204,28 +90,8 @@ var Update = async function (entity) {
 var Add = async function (entity) {
     try {
         let that = this.db;
-        if (entity) {
-            let attributes = Object.getOwnPropertyNames(entity).filter(function (value) { return !value.startsWith("_"); });
-            let attributesStr = attributes.join(",");
-            let tableName = table_Prefex + entity.constructor.name;
-            //Prepare the values array
-            let values = GetValuesFromObject(entity, attributes);
-
-            //Do the Query
-            let sql = " insert into " + tableName + " (" + attributesStr + ") values (" + values + ")";
-            let isSuccess = await that.run(sql);
-            if (isSuccess) {
-                await idGenerator.UpdateSeqOnDB(that);
-                return common.success;
-            }
-            else {
-                return common.error;
-            }
-        }
-        else {
-            return common.error;
-        }
-
+        let result =  await AddorUpdateEntity(that, entity);
+        return result;
     }
     catch (error) {
         logger.logError(error);
@@ -234,11 +100,33 @@ var Add = async function (entity) {
 };
 
 
-
+var AddUncommittedSynch = function (Entity) {
+    try {
+        if (Entity) {
+            if (uncommittedEntities) {
+                //remove old entity if existed
+                //To keep the last update only on the DB 
+                for (let i = 0; i < uncommittedEntities.length; i++) {
+                    let t_updateEntity = uncommittedEntities[i];
+                    if (t_updateEntity.id == Entity.id && t_updateEntity.constructor.name == Entity.constructor.name) {
+                        uncommittedEntities.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+            uncommittedEntities.push(Entity);
+            updateModifiedEntities.push(Entity);
+        }
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
 var UpdateSynch = function (Entity) {
     try {
-        updateEntities.push(Entity);
-        return common.success;
+        return AddUncommittedSynch(Entity);
     }
     catch (error) {
         logger.logError(error);
@@ -247,8 +135,7 @@ var UpdateSynch = function (Entity) {
 };
 var AddSynch = function (Entity) {
     try {
-        addEntities.push(Entity);
-        return common.success;
+        return AddUncommittedSynch(Entity);
     }
     catch (error) {
         logger.logError(error);
@@ -257,29 +144,8 @@ var AddSynch = function (Entity) {
 };
 var clearEntities = async function () {
     try {
-        addEntities = [];
-        updateEntities = [];
-        return common.success;
-    }
-    catch (error) {
-        logger.logError(error);
-        return common.error;
-    }
-};
-var commit = async function () {
-    try {
-        let count = addEntities.length;
-        while (count > 0) {
-            let Entity = addEntities.shift();
-            await this.Add(Entity);
-            count = count - 1;
-        }
-        count = updateEntities.length;
-        while (count > 0) {
-            let Entity = updateEntities.shift();
-            await this.Update(Entity);
-            count = count - 1;
-        }
+        uncommittedEntities = [];
+        updateModifiedEntities = [];
         return common.success;
     }
     catch (error) {
@@ -288,33 +154,108 @@ var commit = async function () {
     }
 };
 
+var commit = async function (RequestID) {
+    try {
+        let that = this;
+        return new Promise(function (resolve, reject) {
+            try{
+                let result = common.error;
+                if (that.db.DBconnected) {
+                    //Create a transaction
+                    var DBtransaction = that.db.getTransaction();
+                    DBtransaction.begin(async function (err) {
+                        //get th
+                        let requestEntities = uncommittedEntities.filter(function(entity){return entity._RequestID == RequestID});
+                        uncommittedEntities = uncommittedEntities.filter(function(entity){return entity._RequestID != RequestID});
+                        let count = requestEntities.length;
+                        while (count > 0) {
+                            count = count - 1;
+                            let Entity = requestEntities.shift();
+                            result = await that.Add(Entity);
+                            if (result != common.success) {
+                                count = 0;
+                            }
+                        }
+                        if (result == common.success) {
+                            await DBtransaction.commit(async function (err) {
+                                if (err) {
+                                    logger.logError("Transaction commited error:" + err);
+                                    result = common.error;
+                                }
+                                resolve(result);
+                            });
+                        }
+                        else {
+                            await DBtransaction.rollback(async function (err) {
+                                if (err) {
+                                    logger.logError("Transaction rollback:" + err);
+                                    result = common.error;
+                                }
+                                resolve(result);
+                            });
+                        }
+                    });
+                }
+                else {
+                    //Error because db is disconnected
+                    resolve(result);
+                }
+            }
+            catch (error) {
+                logger.logError(error);
+                resolve(common.error);
+            }
+        });
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
+
+//Run update script 
+var runSQLScript = async function (db) {
+    try {
+        //Run the initialize script
+        let t_sqlResult;
+        let sql = fs.readFileSync("sql_database.sql").toString();
+        let scriptArray = sql.replace("\r\n", "").split("##GO##");
+        scriptArray = scriptArray.slice(0, scriptArray.length - 1);
+        for (let i = 0; i < scriptArray.length; i++) {
+            t_sqlResult = await db.run(scriptArray[i]);
+            if (t_sqlResult.result != common.success) {
+                return t_sqlResult.result;
+            }
+        }
+        return t_sqlResult;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+};
+
+//Initialize SQL Connection
 var initialize = async function () {
     try {
         // open the database
         this.db = sqlDB;
-        let result = await this.db.open(common.settings.sqldbConnection);
-
-        //Run the initialize script
-        let sql = fs.readFileSync("sql_database.sql").toString();
-        let scriptArray = sql.replace("\r\n", "").split(";");
-        scriptArray = scriptArray.slice(0, scriptArray.length - 1);
-        for (let i = 0; i < scriptArray.length; i++) {
-            let result2 = await this.db.run(scriptArray[i]);
-            if (result2 == false) {
-                return common.error;
-            }
+        let t_sqlResult = await this.db.open(common.settings.sqldbConnection);
+        if (t_sqlResult.result == common.success) {
+            t_sqlResult = await runSQLScript(this.db);
         }
-        return result;
+        return t_sqlResult.result;
     }
     catch (error) {
         logger.logError(error);
+        return common.error;
     }
 };
 
 var stop = async function () {
     try {
         if (this.db) {
-            this.db.stop();
+            this.db.close();
         }
     }
     catch (error) {
@@ -325,11 +266,8 @@ var stop = async function () {
 var getModifiedEntities = function () {
     try {
         //Get the updated with out the new updates
-        let Updated = updateEntities;
-        let Updated_IDs = updateEntities.map(entity => entity.id);
-        let NewAdded = addEntities;
-        let newWithoutUpdate = NewAdded.filter(function (entity) { return Updated_IDs.indexOf(entity.id) < 0 })
-        let Entities = Updated.concat(newWithoutUpdate);
+        let Entities = updateModifiedEntities;
+        updateModifiedEntities = [];
         return Entities;
     }
     catch (error) {
@@ -342,7 +280,6 @@ var entitiesRepo = function () {
     try {
         //Functions
         this.getAll = getAll;
-        this.getFilterBy = getFilterBy;
         this.remove = remove;
         this.clear = clear;
         this.Update = Update;
@@ -361,6 +298,5 @@ var entitiesRepo = function () {
 };
 
 
-module.exports.updateEntities = updateEntities;
-module.exports.addEntities = addEntities;
+module.exports.uncommittedEntities = uncommittedEntities;
 module.exports = entitiesRepo;

@@ -3,15 +3,13 @@ var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
 var constants = require("../../common/constants");
-var events = require("../../common/events");
+var commonMethods = require("../../common/commonMethods");
 var transaction = require("../data/transaction");
 var branchStatisticsData = require("../data/branchStatisticsData");
 var transactionStatisticsData = require("../data/transactionStatisticsData");
 var statisticsData = require("../data/statisticsData");
 var configurationService = require("../configurations/configurationService");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
-var responsePayload = require('../messagePayload/responsePayload');
-var broadcastTopic = "statistics.broadcast";
 var ModuleName = "Statistics";
 var branches_statisticsData = [];
 const UpdateTypes = {
@@ -20,75 +18,117 @@ const UpdateTypes = {
 };
 
 var generateID = function (transaction) {
-    return transaction.branch_ID + "_" + transaction.service_ID + "_" + transaction.segment_ID + "_" + transaction.hall_ID + "_" + transaction.counter_ID + "_" + transaction.user_ID;
+    return transaction.queueBranch_ID + "_" + transaction.service_ID + "_" + transaction.segment_ID + "_" + transaction.hall_ID + "_" + transaction.counter_ID + "_" + transaction.user_ID;
 };
 
 function UpdateWaitingCustomers(UpdateType, t_Statistics, transaction) {
-    //Waiting Customer
-    if (transaction.state == enums.StateType.Pending || transaction.state == enums.StateType.PendingRecall || transaction.state == enums.StateType.OnHold) {
-        let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
-        t_Statistics.WaitingCustomers = t_Statistics.WaitingCustomers + Changevalue;
+    try {
+        //Waiting Customer
+        if (transaction.state == enums.StateType.Pending || transaction.state == enums.StateType.PendingRecall || transaction.state == enums.StateType.OnHold) {
+            let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
+            t_Statistics.WaitingCustomers = t_Statistics.WaitingCustomers + Changevalue;
+        }
     }
+    catch (error) {
+        logger.logError(error);
+    }
+
 }
 function UpdateServedCustomersNo(UpdateType, t_Statistics, transaction) {
-    //served customers
-    if (transaction.serviceSeconds > 0 && (transaction.servingType == enums.CustomerServingType.Served || transaction.servingType == enums.CustomerServingType.SetAsServed || transaction.servingType == enums.CustomerServingType.ServedWithAdded)) {
-        let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
-        t_Statistics.ServedCustomersNo = t_Statistics.ServedCustomersNo + Changevalue;
+    try {
+        //served customers
+        if (transaction.servingSeconds > 0 && (transaction.servingType == enums.CustomerServingType.Served || transaction.servingType == enums.CustomerServingType.SetAsServed || transaction.servingType == enums.CustomerServingType.ServedWithAdded)) {
+            let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
+            t_Statistics.ServedCustomersNo = t_Statistics.ServedCustomersNo + Changevalue;
+        }
     }
+    catch (error) {
+        logger.logError(error);
+    }
+
 }
 
 function UpdateNoShowCustomersNo(UpdateType, t_Statistics, transaction) {
-    //number of no show
-    if (transaction.servingType == enums.CustomerServingType.NoShow) {
-        let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
-        t_Statistics.NoShowCustomersNo = t_Statistics.NoShowCustomersNo + Changevalue;
+    try {
+        //number of no show
+        if (transaction.servingType == enums.CustomerServingType.NoShow) {
+            let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
+            t_Statistics.NoShowCustomersNo = t_Statistics.NoShowCustomersNo + Changevalue;
+        }
     }
+    catch (error) {
+        logger.logError(error);
+    }
+
 }
 
 function UpdateNonServedCustomersNo(UpdateType, t_Statistics, transaction) {
-    if (transaction.servingType == enums.CustomerServingType.NoCalled || transaction.servingType == enums.CustomerServingType.NoShow) {
-        let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
-        t_Statistics.NonServedCustomersNo = t_Statistics.NonServedCustomersNo + Changevalue;
+    try {
+        if (transaction.servingType == enums.CustomerServingType.NoCalled || transaction.servingType == enums.CustomerServingType.NoShow) {
+            let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
+            t_Statistics.NonServedCustomersNo = t_Statistics.NonServedCustomersNo + Changevalue;
+        }
     }
+    catch (error) {
+        logger.logError(error);
+    }
+
 }
 
 function UpdateServiceStatistics(UpdateType, t_Statistics, transaction, ServiceConfig) {
-    if (transaction.serviceSeconds > 0 && (transaction.servingType == enums.CustomerServingType.Served || transaction.servingType == enums.CustomerServingType.ServedWithAdded)) {
-        if (transaction.serviceSeconds <= ServiceConfig.MaxServiceTime) {
-            let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
-            t_Statistics.ASTWeight = t_Statistics.ASTWeight + Changevalue;
-            t_Statistics.TotalServiceTime = t_Statistics.TotalServiceTime + (transaction.serviceSeconds * Changevalue);
-            t_Statistics.AvgServiceTime = t_Statistics.TotalServiceTime / t_Statistics.ASTWeight;
+    try {
+        if (transaction.servingSeconds > 0 && (transaction.servingType == enums.CustomerServingType.Served || transaction.servingType == enums.CustomerServingType.ServedWithAdded)) {
+            if (transaction.servingSeconds <= ServiceConfig.MaxServiceTime) {
+                let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
+                t_Statistics.ASTWeight = t_Statistics.ASTWeight + Changevalue;
+                t_Statistics.TotalServiceTime = t_Statistics.TotalServiceTime + (transaction.servingSeconds * Changevalue);
+                t_Statistics.AvgServiceTime = t_Statistics.TotalServiceTime / t_Statistics.ASTWeight;
+            }
         }
     }
+    catch (error) {
+        logger.logError(error);
+    }
+
 }
 
 function UpdateWaitingStatistics(UpdateType, t_Statistics, transaction, ServiceConfig) {
-    if (transaction.waitingSeconds > 0 && transaction.origin != enums.OriginType.AddVirtualService && transaction.servingType != enums.CustomerServingType.CancelledDueTransfer) {
-        let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
-        t_Statistics.WaitedCustomersNo = t_Statistics.WaitedCustomersNo + Changevalue;
-        if (transaction.waitingSeconds <= ServiceConfig.MaxServiceTime) {
-            t_Statistics.TotalWaitingTime = t_Statistics.TotalWaitingTime + (transaction.waitingSeconds * Changevalue);
+    try {
+        if (transaction.waitingSeconds > 0 && transaction.origin != enums.OriginType.AddVirtualService && transaction.servingType != enums.CustomerServingType.CancelledDueTransfer) {
+            let Changevalue = (UpdateType == UpdateTypes.Add) ? 1 : -1;
+            t_Statistics.WaitedCustomersNo = t_Statistics.WaitedCustomersNo + Changevalue;
+            if (transaction.waitingSeconds <= ServiceConfig.MaxServiceTime) {
+                t_Statistics.TotalWaitingTime = t_Statistics.TotalWaitingTime + (transaction.waitingSeconds * Changevalue);
+            }
+            t_Statistics.AvgWaitingTime = t_Statistics.TotalWaitingTime / t_Statistics.WaitedCustomersNo;
         }
-        t_Statistics.AvgWaitingTime = t_Statistics.TotalWaitingTime / t_Statistics.WaitedCustomersNo;
     }
+    catch (error) {
+        logger.logError(error);
+    }
+
 }
 
 
 function prepareNewStatistics(transaction) {
-    let Statistics = new statisticsData();
-    Statistics.StatisticsDate = Date.now();
-    if (transaction) {
-        Statistics.id = generateID(transaction);
-        Statistics.branch_ID = transaction.branch_ID;
-        Statistics.segment_ID = transaction.segment_ID;
-        Statistics.hall_ID = transaction.hall_ID;
-        Statistics.counter_ID = transaction.counter_ID;
-        Statistics.user_ID = transaction.user_ID;
-        Statistics.service_ID = transaction.service_ID;
+    try {
+        let Statistics = new statisticsData();
+        Statistics.StatisticsDate = commonMethods.Now();
+        if (transaction) {
+            Statistics.id = generateID(transaction);
+            Statistics.queueBranch_ID = transaction.queueBranch_ID;
+            Statistics.segment_ID = transaction.segment_ID;
+            Statistics.hall_ID = transaction.hall_ID;
+            Statistics.counter_ID = transaction.counter_ID;
+            Statistics.user_ID = transaction.user_ID;
+            Statistics.service_ID = transaction.service_ID;
+        }
+        return Statistics;
     }
-    return Statistics;
+    catch (error) {
+        logger.logError(error);
+    }
+
 }
 var CreateNewstatistics = function (transaction) {
     try {
@@ -116,6 +156,7 @@ var CreateNewstatistics = function (transaction) {
             UpdateWaitingStatistics(UpdateTypes.Add, Statistics, transaction, ServiceConfig);
         }
 
+        Statistics._RequestID = transaction._RequestID;
         repositoriesManager.entitiesRepo.AddSynch(Statistics);
 
         return Statistics;
@@ -217,7 +258,7 @@ var GetHallsStatistics = function (BranchID, Hall_IDs) {
 var UpdateStatistics = function (UpdateType, Statistics, transaction) {
     try {
         let ServiceConfig = configurationService.getServiceConfigFromService(transaction.service_ID);
-        Statistics.StatisticsDate = Date.now();
+        Statistics.StatisticsDate = commonMethods.Now();
         Statistics.id = generateID(transaction);
 
 
@@ -239,6 +280,7 @@ var UpdateStatistics = function (UpdateType, Statistics, transaction) {
         //waited customer
         UpdateWaitingStatistics(UpdateType, Statistics, transaction, ServiceConfig);
 
+        Statistics._RequestID = transaction._RequestID;
         repositoriesManager.entitiesRepo.UpdateSynch(Statistics);
 
         return Statistics;
@@ -250,7 +292,7 @@ var UpdateStatistics = function (UpdateType, Statistics, transaction) {
 };
 var AddOrUpdateTransaction = function (transaction) {
     try {
-        let BranchID = transaction.branch_ID;
+        let BranchID = transaction.queueBranch_ID;
         //search from branch
         let t_branches_statisticsData = getBranchStatisticsData(BranchID);
 
@@ -268,7 +310,10 @@ var AddOrUpdateTransaction = function (transaction) {
                 let oldStatistics = t_branches_statisticsData.statistics.find(function (value) {
                     return value.id == oldStatistics_ID;
                 });
-                UpdateStatistics(UpdateTypes.Subtract, oldStatistics, transaction._StatisticsData);
+                if (oldStatistics) {
+                    transaction._StatisticsData._RequestID = transaction._RequestID;
+                    UpdateStatistics(UpdateTypes.Subtract, oldStatistics, transaction._StatisticsData);
+                }
             }
 
             //Add Current Statistics
@@ -284,7 +329,7 @@ var AddOrUpdateTransaction = function (transaction) {
         else {
             //add branch transactions
             t_branches_statisticsData = new branchStatisticsData();
-            t_branches_statisticsData.branch_ID = BranchID;
+            t_branches_statisticsData.queueBranch_ID = BranchID;
             let t_Statistics = CreateNewstatistics(transaction);
             t_branches_statisticsData.statistics.push(t_Statistics);
             branches_statisticsData.push(t_branches_statisticsData);
@@ -295,12 +340,13 @@ var AddOrUpdateTransaction = function (transaction) {
         return undefined;
     }
 };
-async function initializeStatisticsFromTransactions(transactionsData) {
+async function initializeStatisticsFromTransactions(RequestID, transactionsData) {
     try {
         if (transactionsData) {
             for (let i = 0; i < transactionsData.length; i++) {
                 let transaction = transactionsData[i];
-                let BranchID = transaction.branch_ID;
+                transaction._RequestID = RequestID;
+                let BranchID = transaction.queueBranch_ID;
                 let Statistics_ID = generateID(transaction);
 
                 //Add it to statistics collection
@@ -322,7 +368,7 @@ async function initializeStatisticsFromTransactions(transactionsData) {
                     //If the branch not exists
                     let t_branchStatistics = new branchStatisticsData();
                     //Create branch statistics
-                    t_branchStatistics.branch_ID = BranchID;
+                    t_branchStatistics.queueBranch_ID = BranchID;
                     //Create statistics
                     let t_Statistics = CreateNewstatistics(transaction);
                     //Add to herarichy
@@ -348,16 +394,17 @@ var initialize = async function () {
         let t_Statistics;
         await repositoriesManager.entitiesRepo.clear(new statisticsData());
         //Get all transactions
-        let transactionsData = await repositoriesManager.entitiesRepo.getAll(new transaction());
-        if (transactionsData && transactionsData.length > 0) {
+        let transactionsData = [];
+        let result = await repositoriesManager.entitiesRepo.getAll(new transaction(), transactionsData);
+        if (result == common.success && transactionsData && transactionsData.length > 0) {
             //filter for today only 
             transactionsData = transactionsData.filter(function (value) {
                 return value.creationTime > Today && value.creationTime < tomorrow;
             }
             );
-
-            await initializeStatisticsFromTransactions(transactionsData);
-            await repositoriesManager.commit();
+            let RequestID = commonMethods.GenerateRequestID();
+            await initializeStatisticsFromTransactions(RequestID, transactionsData);
+            await repositoriesManager.commit(RequestID);
         }
         await repositoriesManager.entitiesRepo.clearEntities();
         return common.success;
@@ -373,7 +420,7 @@ var initialize = async function () {
 //Get branch statistics
 var ReadBranchStatistics = function (apiMessagePayLoad) {
     try {
-        let BranchID = apiMessagePayLoad.BranchID;
+        let BranchID = apiMessagePayLoad.branchid;
         let Branchstatistics = getBranchStatisticsData(BranchID);
         if (Branchstatistics) {
             apiMessagePayLoad.statistics = Branchstatistics.statistics;
@@ -411,7 +458,7 @@ function SumStatistics(TotalStatistics, ToBeAddedStatistics) {
 function getBranchStatisticsData(BranchID) {
     try {
         let t_branches_statisticsData = branches_statisticsData.find(function (value) {
-            return value.branch_ID == BranchID;
+            return value.queueBranch_ID == BranchID;
         });
         return t_branches_statisticsData;
     }
@@ -455,11 +502,11 @@ function calculateBranchStatistics(statistics, FilterStatistics) {
 //Get single statistics
 var GetSpecificStatistics = function (FilterStatistics) {
     try {
-        if (!FilterStatistics || FilterStatistics.branch_ID <= 0) {
+        if (!FilterStatistics || FilterStatistics.queueBranch_ID <= 0) {
             return undefined;
         }
         //search from branch
-        let t_branches_statisticsData = getBranchStatisticsData(FilterStatistics.branch_ID);
+        let t_branches_statisticsData = getBranchStatisticsData(FilterStatistics.queueBranch_ID);
         if (t_branches_statisticsData) {
             let TotalStatistics = calculateBranchStatistics(t_branches_statisticsData.statistics, FilterStatistics);
             return TotalStatistics;
@@ -472,31 +519,6 @@ var GetSpecificStatistics = function (FilterStatistics) {
 
 };
 
-/*
-TO BE REMOVED
-function broadcastStatistics(BranchID)
-{
-    try{
-        var message = new responsePayload() ;
-        message.topicName = ModuleName + "/branchStatistics";
-        let Branchstatistics = getBranchStatisticsData(BranchID);
-        message.result = common.success;
-        message.payload = new responsePayload();
-        if (Branchstatistics) {
-            message.payload.statisticsInfo = Branchstatistics.statistics;
-        }
-        else {
-            message.payload.statisticsInfo = [];
-        }
-        events.broadcastMessage.emit('event',broadcastTopic, message);
-        return common.success;
-    }
-    catch (error) {
-        logger.logError(error);
-        return common.error;
-    }
-}
-*/
 
 module.exports.ModuleName = "Statistics";
 module.exports.GetCountersStatistics = GetCountersStatistics;

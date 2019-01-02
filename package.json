@@ -4,10 +4,10 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "node ./src/app.js",
+    "start": "cross-env NODE_ENV=default node ./src/app.js",
     "lint": "esw *.js src",
     "lint:watch": "npm run lint -- --watch",
-    "test": "mocha -R spec --recursive ./src --exit",
+    "test": "cross-env NODE_ENV=test mocha -R spec --recursive ./src --exit",
     "testnyc": "nyc mocha -R spec --recursive ./src",
     "coverage": "istanbul cover node_modules/mocha/bin/_mocha -- -R spec --recursive ./src",
     "heroku": "deploy.sh"
@@ -17,8 +17,11 @@
   "dependencies": {
     "amqplib": "^0.5.2",
     "btoa": "^1.2.1",
+    "config": "^2.0.1",
+    "cross-env": "^5.2.0",
     "dateformat": "^3.0.3",
     "debug": "^3.1.0",
+    "dotenv": "^6.1.0",
     "eslint": "^5.5.0",
     "fs": "0.0.1-security",
     "mocha": "^5.2.0",
@@ -28,6 +31,8 @@
     "should": "^13.2.3",
     "sinon": "^6.2.0",
     "sqlite3": "^4.0.2",
+    "string-format": "^2.0.0",
+    "tedious": "^2.6.4",
     "xml2js": "^0.4.19",
     "xmldeserializer": "^0.5.0"
   }

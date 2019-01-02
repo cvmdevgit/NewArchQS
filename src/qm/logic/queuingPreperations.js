@@ -15,30 +15,30 @@ var ActiveStates = [enums.UserActiontypes.Serving, enums.UserActiontypes.Ready, 
 var NumberOfChanged = 0;
 
 function setTransferBackSettings(orgID, branchID, counterID, CurrentWorkFlow, availableActions) {
-    let CustomerReturn0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_BACK);
+    let CustomerReturnEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_BACK);
     //Check Return
-    if (CurrentWorkFlow && CurrentWorkFlow.IsTransferBackEnabled == true && CustomerReturn0Enabled == true) {
+    if (CurrentWorkFlow && CurrentWorkFlow.IsTransferBackEnabled == true && CustomerReturnEnabled == true) {
         availableActions.TransferBackAllowed = WorkFlowManager.IsTransferBackAllowed(orgID, branchID, counterID);
     }
 }
 
 function setAddServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions) {
-    let AddService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_ADDING_SERVICES_PARAMETER);
-    availableActions.AddServiceAllowed = AddService0Enabled && CurrentWorkFlow.IsAddServiceEnabled && serviceAvailableActions.AllowAddingFromAnother;
+    let AddServiceEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_ADDING_SERVICES_PARAMETER);
+    availableActions.AddServiceAllowed = AddServiceEnabled && CurrentWorkFlow.IsAddServiceEnabled && serviceAvailableActions.AllowAddingFromAnother;
     if (availableActions.AddServiceAllowed) {
         availableActions.AddServices = WorkFlowManager.PrepareAddList(orgID, branchID, counterID);
     }
 }
 function setTransferToCounterSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions) {
-    let TransfToCounter0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_WINDOW);
-    availableActions.TransferToCounterAllowed = TransfToCounter0Enabled && CurrentWorkFlow.IsTransferToCounterAllowed && serviceAvailableActions.AllowTransferingToCounter;
+    let TransfToCounterEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_WINDOW);
+    availableActions.TransferToCounterAllowed = TransfToCounterEnabled && CurrentWorkFlow.IsTransferToCounterAllowed && serviceAvailableActions.AllowTransferingToCounter;
     if (availableActions.TransferToCounterAllowed) {
         availableActions.TransferCounters = WorkFlowManager.PrepareTransferCountersList(orgID, branchID, counterID);
     }
 }
 function setTransferToServiceSettings(orgID, branchID, counterID, CurrentWorkFlow, serviceAvailableActions, availableActions) {
-    let TransfToService0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_SERVICE);
-    availableActions.TransferToServiceAllowed = TransfToService0Enabled && CurrentWorkFlow.IsTransferToServiceAllowed && serviceAvailableActions.AllowTransferingToAnother;
+    let TransfToServiceEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_TRANSFER_TO_SERVICE);
+    availableActions.TransferToServiceAllowed = TransfToServiceEnabled && CurrentWorkFlow.IsTransferToServiceAllowed && serviceAvailableActions.AllowTransferingToAnother;
     if (availableActions.TransferToServiceAllowed) {
         availableActions.TransferServicesIDs = WorkFlowManager.PrepareTransferServicesList(orgID, branchID, counterID);
     }
@@ -92,8 +92,8 @@ function setFinishActions(branchID, CurrentState, availableActions) {
     }
 }
 function setHoldSettings(branchID, CurrentWorkFlow, availableActions) {
-    let Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
-    availableActions.HoldAllowed = Hold0Enabled && CurrentWorkFlow.IsHoldEnabled;
+    let HoldEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
+    availableActions.HoldAllowed = HoldEnabled && CurrentWorkFlow.IsHoldEnabled;
 }
 function setCustomerInfoRelatedSettings(branchID, CurrentState, availableActions) {
     let TempString = configurationService.getCommonSettings(branchID, constants.ENABLE_EDITING_SERVED_CUSTOMER_INFO);
@@ -136,8 +136,8 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
         WindowListButtonsVisible = true;
     }
     else {
-        let Hold0Enabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
-        WindowListButtonsVisible = Hold0Enabled ? true : false;
+        let HoldEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_CUSTOMER_HOLD);
+        WindowListButtonsVisible = HoldEnabled ? true : false;
     }
     let workingStates = [enums.UserActiontypes.Ready, enums.UserActiontypes.Serving, enums.UserActiontypes.Processing, enums.UserActiontypes.NoCallServing]
     let isNotWorking = workingStates.indexOf(CurrentState) < 0;
@@ -213,7 +213,7 @@ function prepareAvailableActionsForCounter(orgID, branchID, counterID) {
             if (!CurrentActivity) {
                 return availableActions;
             }
-            let State = parseInt(CurrentActivity.type);
+            let State = parseInt(CurrentActivity.activityType);
             if (isCounterStateValid(State) == false) {
                 return availableActions;
             }
@@ -288,7 +288,7 @@ function getBranchCountersData(branchID) {
     }
 }
 function isCounterActive(CurrentActivity) {
-    if (CurrentActivity && (ActiveStates.indexOf(parseInt(CurrentActivity.type))) > -1) {
+    if (CurrentActivity && (ActiveStates.indexOf(parseInt(CurrentActivity.activityType))) > -1) {
         return true;
     }
     return false;

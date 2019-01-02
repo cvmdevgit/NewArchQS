@@ -54,6 +54,12 @@ class rabbitMQClient {
                 });
                 if (!channelItem) {
                     amqp.connect(common.settings.RabbitMQconnection, function (err, conn) {
+                        if (!conn)
+                        {
+                            console.log("Connot connect to Rabbit MQ make sure it is installed and enabled, try after 15 seconds");
+                            setTimeout(setConnection,15000)
+                            resolve(common.error);
+                        }
                         conn.createChannel(function (err, ch) {
                             ch.assertExchange(QS_EXCHANGE, 'topic', { durable: false })
                             ch.assertQueue(that.RPC_Queue, { durable: false });
@@ -64,7 +70,7 @@ class rabbitMQClient {
                                 }
                             }
                             ch.prefetch(1);
-                            console.log('initialized');
+                            console.log('Rabbit MQ Connected');
                             that.connection = conn;
                             that.channel = ch;
                             channels.push({
@@ -93,108 +99,120 @@ class rabbitMQClient {
     //Recieve the messages from topics and process it using the function
     async receive(ProcessMessageFunction) {
         let that = this;
-        await this.setConnection();
+        let result = await this.setConnection();
+        if (result == common.success) {
+            return new Promise(function (resolve, reject) {
+                try {
+                    that.channel.consume(that.RPC_Queue, async function sendReply(msg) {
+                        try {
+                            let payloadBytes = msg.content;
+                            let payload = JSON.parse(payloadBytes.toString());
+                            //console.log("Recieve request and send the reply");
+                            await ProcessMessageFunction(payload);
+                            that.channel.sendToQueue(msg.properties.replyTo,
+                                Buffer.from(JSON.stringify(payload)),
+                                { correlationId: msg.properties.correlationId });
 
-        return new Promise(function (resolve, reject) {
-            try {
-                that.channel.consume(that.RPC_Queue, async function sendReply(msg) {
-                    try {
-                        let payloadBytes = msg.content;
-                        let payload = JSON.parse(payloadBytes.toString());
-                        console.log("Recieve request and send the reply");
-                        await ProcessMessageFunction(payload);
-                        that.channel.sendToQueue(msg.properties.replyTo,
-                            new Buffer(JSON.stringify(payload)),
-                            { correlationId: msg.properties.correlationId });
+                            that.channel.ack(msg);
+                            resolve(common.success);
+                        }
+                        catch (error) {
+                            that.channel.sendToQueue(msg.properties.replyTo,
+                                Buffer.from(JSON.stringify("")),
+                                { correlationId: msg.properties.correlationId });
 
-                        that.channel.ack(msg);
-                        resolve(common.success);
-                    }
-                    catch (error) {
-                        that.channel.sendToQueue(msg.properties.replyTo,
-                            new Buffer(JSON.stringify("")),
-                            { correlationId: msg.properties.correlationId });
+                            that.channel.ack(msg);
+                            logger.logError(error);
+                            resolve(common.error);
+                        }
+                    });
+                    that.channel.consume(that.RPC_Queue_Listener, async function sendReply(msg) {
+                        try {
+                            let payloadBytes = msg.content;
+                            let payload = JSON.parse(payloadBytes.toString());
+                            //console.log("Recieve request and send the reply");
+                            await ProcessMessageFunction(payload);
+                            that.channel.sendToQueue(msg.properties.replyTo,
+                                Buffer.from(JSON.stringify(payload)),
+                                { correlationId: msg.properties.correlationId });
 
-                        that.channel.ack(msg);
-                        logger.logError(error);
-                        resolve(common.error);
-                    }
-                });
-                that.channel.consume(that.RPC_Queue_Listener, async function sendReply(msg) {
-                    try {
-                        let payloadBytes = msg.content;
-                        let payload = JSON.parse(payloadBytes.toString());
-                        console.log("Recieve request and send the reply");
-                        await ProcessMessageFunction(payload);
-                        that.channel.sendToQueue(msg.properties.replyTo,
-                            new Buffer(JSON.stringify(payload)),
-                            { correlationId: msg.properties.correlationId });
+                            that.channel.ack(msg);
+                            resolve(common.success);
+                        }
+                        catch (error) {
+                            that.channel.sendToQueue(msg.properties.replyTo,
+                                Buffer.from(JSON.stringify("")),
+                                { correlationId: msg.properties.correlationId });
 
-                        that.channel.ack(msg);
-                        resolve(common.success);
-                    }
-                    catch (error) {
-                        that.channel.sendToQueue(msg.properties.replyTo,
-                            new Buffer(JSON.stringify("")),
-                            { correlationId: msg.properties.correlationId });
-
-                        that.channel.ack(msg);
-                        logger.logError(error);
-                        resolve(common.error);
-                    }
-                });
-            }
-            catch (error) {
-                logger.logError(error);
-                resolve(common.error);
-            }
-        });
+                            that.channel.ack(msg);
+                            logger.logError(error);
+                            resolve(common.error);
+                        }
+                    });
+                }
+                catch (error) {
+                    logger.logError(error);
+                    resolve(common.error);
+                }
+            });
+        }
+        else
+        {
+            logger.logError("Problem with rabbitMQ Connection");
+            return result;
+        }
     };
 
     //Send to queue and wait for reply
     async send(QueueName, Message, Reply) {
         try {
             let that = this;
-            await this.setConnection();
-            return new Promise(function (resolve, reject) {
-                try {
-                    //Get the needed channel
-                    that.channel = channels.find(function (x) {
-                        return x.key == that.RPC_Queue + "_" + that.keysString
-                    }).value;
-
-                    //Function to handle the comming events
-                    let random_correlationId = commonMethods.guid();
-                    var handleReply = function (correlationId, msg) {
-                        if (correlationId == random_correlationId) {
-                            Reply.push(msg);
-                            that.MessageRecieveEmitter.removeListener('event', handleReply);
-                            resolve(common.success);
+            let result = await this.setConnection();
+            if (result == common.success) {
+                return new Promise(function (resolve, reject) {
+                    try {
+                        //Get the needed channel
+                        that.channel = channels.find(function (x) {
+                            return x.key == that.RPC_Queue + "_" + that.keysString
+                        }).value;
+    
+                        //Function to handle the comming events
+                        let random_correlationId = commonMethods.guid();
+                        var handleReply = function (correlationId, msg) {
+                            if (correlationId == random_correlationId) {
+                                Reply.push(msg);
+                                that.MessageRecieveEmitter.removeListener('event', handleReply);
+                                resolve(common.success);
+                            }
                         }
+    
+                        //Add handler to the recieve event
+                        that.MessageRecieveEmitter.on('event', handleReply);
+    
+                        //Send the message to queue
+                        console.log("Send Request");
+                        that.channel.sendToQueue(QueueName,
+                            Buffer.from(Message.toString()),
+                            { correlationId: random_correlationId, replyTo: that.RPC_Queue_Reply });
+    
+                        //Fallback handling (Remove the handler and resolve the promise after 2 seconds)
+                        var TimeoutHandler = function () {
+                            that.MessageRecieveEmitter.removeListener('event', handleReply);
+                            resolve(common.error);
+                        }
+                        setTimeout(TimeoutHandler, 2000);
                     }
-
-                    //Add handler to the recieve event
-                    that.MessageRecieveEmitter.on('event', handleReply);
-
-                    //Send the message to queue
-                    console.log("Send Request");
-                    that.channel.sendToQueue(QueueName,
-                        new Buffer(Message.toString()),
-                        { correlationId: random_correlationId, replyTo: that.RPC_Queue_Reply });
-
-                    //Fallback handling (Remove the handler and resolve the promise after 2 seconds)
-                    var TimeoutHandler = function () {
-                        that.MessageRecieveEmitter.removeListener('event', handleReply);
+                    catch (error) {
+                        logger.logError(error);
                         resolve(common.error);
                     }
-                    setTimeout(TimeoutHandler, 2000);
-                }
-                catch (error) {
-                    logger.logError(error);
-                    resolve(common.error);
-                }
-
-            });
+    
+                });
+            }
+            else {
+                logger.logError("Problem with rabbitMQ Connection");
+                return result;
+            }
         } catch (error) {
             logger.logError(error);
             resolve(common.error);
@@ -204,18 +222,23 @@ class rabbitMQClient {
     async sendBroadcast(Topic, Message) {
         try {
             let that = this;
-            await this.setConnection();
-            return new Promise(function (resolve, reject) {
-                try {
-                    that.channel.publish(QS_EXCHANGE, Topic, new Buffer(Message));
-                    resolve(common.success);
-                }
-                catch (error) {
-                    logger.logError(error);
-                    resolve(common.error);
-                }
-
-            });
+            let result = await this.setConnection();
+            if (result == common.success) {
+                return new Promise(function (resolve, reject) {
+                    try {
+                        that.channel.publish(QS_EXCHANGE, Topic, Buffer.from(Message));
+                        resolve(common.success);
+                    }
+                    catch (error) {
+                        logger.logError(error);
+                        resolve(common.error);
+                    }
+                });
+            }
+            else {
+                logger.logError("Problem with rabbitMQ Connection");
+                return result;
+            }
         } catch (error) {
             logger.logError(error);
             resolve(common.error);

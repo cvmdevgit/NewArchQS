@@ -2,7 +2,7 @@
 //for now when working on DB, we will use Getall to retrieve everything
 //later when the repository returns data from server, the server will implement getbyFilter API.
 var logger = require("../../common/logger");
-var sqlDB = require("../localRepositories/aa-sql");
+var sqlDB = require("../localRepositories/sqlConnector");
 var common = require("../../common/common");
 
 //Add 

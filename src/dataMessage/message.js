@@ -1,7 +1,7 @@
 var commonMethods = require("../common/commonMethods");
 class message {
     constructor() {
-        this.time = Date.now();
+        this.time = commonMethods.Now();
         this.messageID = commonMethods.guid();
         this.source = "";
         this.correlationId = "";

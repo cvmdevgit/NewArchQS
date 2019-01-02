@@ -28,6 +28,7 @@ function getQSRequestObject(MessagePayload) {
         t_requestPayload.segmentid = MessagePayload["segmentid"];
         t_requestPayload.serviceid = MessagePayload["serviceid"];
         t_requestPayload.counterid = MessagePayload["counterid"];
+        t_requestPayload.tocounterid = MessagePayload["tocounterid"];
         t_requestPayload.languageindex = MessagePayload["languageindex"];
         t_requestPayload.origin = MessagePayload["origin"];
         t_requestPayload.orgid = MessagePayload["orgid"];
@@ -35,6 +36,7 @@ function getQSRequestObject(MessagePayload) {
         t_requestPayload.holdreasonid = MessagePayload["holdreasonid"];
         t_requestPayload.loginName = MessagePayload["loginName"];
         t_requestPayload.password = MessagePayload["password"];
+        t_requestPayload.additionalparameters = MessagePayload["additionalparameters"];
         return t_requestPayload;
     }
     catch (error) {

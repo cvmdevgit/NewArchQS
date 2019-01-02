@@ -1,0 +1,26 @@
+{
+    "settings": {
+        "OrgID": "1",
+        "ServerConnectionParameters": {
+            "Username": "SystemUser",
+            "Password": "123",
+            "ServerURL": "http://localhost:8080/CVMServer"
+        },
+        "dbType": "sql",
+        "dbConnection": "./db/queuing.db",
+        "sqldbConnection": {
+            "user": "sa",
+            "password": "sedco@123",
+            "server": "localhost",
+            "database": "new",
+            "pool": {
+                "max": 500,
+                "min": 5,
+                "idleTimeoutMillis": 30000
+            }
+        },
+        "mock": true,
+        "RabbitMQconnectionCloud": "amqp://vnojmzgd:p8afSb7X0JtGueCY0hLlfHrAf1oIBqQ_@woodpecker.rmq.cloudamqp.com/vnojmzgd",
+        "RabbitMQconnection": "amqp://guest:guest@localhost"
+    }
+}

@@ -34,6 +34,16 @@ const SegmentAllocationType = {
     Customize: 2
 };
 
+const ServiceStatuses = {
+    Unknown: 0,
+    Working: 1,
+    Error: 2
+};
+
+const ServiceErrorCodes = {
+    NoErrors: 0,
+    DBConnection: -100,
+};
 
 const CustomerServingType = {
     NoCalled: 0,
@@ -50,7 +60,7 @@ const OriginType = {
     //IF any change occours the simulation must be changed
     None: 0,
     TransferToService: 1,
-    TransferToWindow: 2,
+    TransferToCounter: 2,
     AddVirtualService: 3,
     MultiService: 4,
     KioskBooking: 5,
@@ -74,13 +84,17 @@ const commands = {
     Open: "open",
     Read: "read",
     Login: "login",
+    TransferToCounter: "transferToCounter",
+    TransferToService: "transferToService",
     ReadBranchStatistics: "readBranchStatistics",
     GetCounterStatus: "getCounterStatus",
     GetHeldCustomers:"getHeldCustomers",
+    GetWaitingCustomers: "getWaitingCustomers",
     GetAllCountersStatus: "getAllCountersStatus",
     GetAllocatedSegments: "getAllocatedSegments",
     GetAllocatedServices: "getAllocatedServices",
-    getCounterStatistics: "getCounterStatistics"
+    getCounterStatistics: "getCounterStatistics",
+    getServiceStatus: "getServiceStatus",
 };
 
 const counterTypes = {
@@ -95,6 +109,9 @@ const ConnectionStatus = {
     Disconnected: "1"
 };
 
+
+module.exports.ServiceStatuses = ServiceStatuses;
+module.exports.ServiceErrorCodes = ServiceErrorCodes;
 module.exports.ConnectionStatus = ConnectionStatus;
 module.exports.AllocationTypes = AllocationTypes;
 module.exports.counterTypes = counterTypes;
@@ -104,5 +121,3 @@ module.exports.UserActiontypes = UserActiontypes;
 module.exports.StateType = StateType;
 module.exports.CustomerServingType = CustomerServingType;
 module.exports.commands = commands;
-
-

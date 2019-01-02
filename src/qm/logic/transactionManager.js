@@ -1,14 +1,16 @@
+"use strict";
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var constants = require("../../common/constants");
+var commonMethods = require("../../common/commonMethods");
 var enums = require("../../common/enums");
 var transaction = require("../data/transaction");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
 var TicketSeqData = require("../data/ticketSeqData");
-var idGenerator = require("../localRepositories/idGenerator");
 var counterData = require("../data/counterData");
+var statisticsData = require("../data/statisticsData");
 var statisticsManager = require("./statisticsManager");
 var workFlowManager = require("./workFlowManager");
 const Separators = ["", " ", "-", "/", "."];
@@ -26,11 +28,15 @@ function UpdateTransactionInBranchData(BracnhData, transaction) {
 }
 
 //Update Transaction
-var UpdateTransaction = function (transaction) {
+var UpdateTransaction = function (RequestID, transaction) {
     try {
+        if (!RequestID) {
+            logger.logError("empty request ID");
+        }
         let result = common.error;
+        transaction._RequestID = RequestID;
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
+        let BracnhData = dataService.getBranchData(transaction.orgID, transaction.queueBranch_ID);
 
         if (BracnhData != null && BracnhData.transactionsData != null) {
 
@@ -54,19 +60,19 @@ var UpdateTransaction = function (transaction) {
 };
 
 //Add or Update Transaction
-var AddTransaction = function (transaction) {
+var AddTransaction = function (RequestID, transaction) {
     try {
-        let result = common.error;
-        //Generate ID in not exists
-        if (transaction.id <= 0) {
-            transaction.id = idGenerator.getNewID();
+        if (!RequestID) {
+            logger.logError("empty request ID");
         }
+        let result = common.error;
+        transaction._RequestID = RequestID;
         //If visit ID was not set then take the same as ID
-        if (transaction.visit_ID <= 0) {
-            transaction.visit_ID = transaction.id;
+        if (transaction.queueBranchVisitID <= 0) {
+            transaction.queueBranchVisitID = transaction.id;
         }
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
+        let BracnhData = dataService.getBranchData(transaction.orgID, transaction.queueBranch_ID);
         if (BracnhData != null && BracnhData.transactionsData != null) {
             //To Branch Transactions
             BracnhData.transactionsData.push(transaction);
@@ -121,8 +127,8 @@ var getHallID = function (transaction, pAllHalls, pAllocatedHalls) {
     try {
         let Hall_ID;
         //Branch Config
-        var branch = configurationService.getBranchConfig(transaction.branch_ID);
-        var branchesData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
+        var branch = configurationService.getBranchConfig(transaction.queueBranch_ID);
+        var branchesData = dataService.getBranchData(transaction.orgID, transaction.queueBranch_ID);
         //Copy IDs
         branch.halls.forEach(function (hall) { pAllHalls.push(hall.ID); });
         //If there was only one Hall Return in
@@ -148,7 +154,7 @@ var getHallID = function (transaction, pAllHalls, pAllocatedHalls) {
                 Hall_ID = HallsToVerfify[0].Hall_ID;
             }
             else {
-                Hall_ID = getBestHallFromStatistics(transaction.branch_ID, HallsToVerfify);
+                Hall_ID = getBestHallFromStatistics(transaction.queueBranch_ID, HallsToVerfify);
             }
         }
         return Hall_ID;
@@ -164,6 +170,7 @@ var prepareDisplayTicketNumber = function (transaction, PriorityRangeMaxNo, Sepa
     try {
         let FormattedTicketNumber = "";
         let displayTicketNumber = "";
+        let displayticketSymbol = "";
         let pad = "";
 
         if (PriorityRangeMaxNo > 999) {
@@ -173,13 +180,18 @@ var prepareDisplayTicketNumber = function (transaction, PriorityRangeMaxNo, Sepa
             pad = "000";
         }
 
+        //Remove null in the range
+        if (transaction.ticketSymbol && transaction.ticketSymbol != null && transaction.ticketSymbol.length < 4) {
+            displayticketSymbol = transaction.ticketSymbol;
+        }
+
         FormattedTicketNumber = pad.substring(0, pad.length - transaction.ticketSequence.toString().length) + transaction.ticketSequence.toString();
 
         if (Separator != null && Separator != "") {
-            displayTicketNumber = transaction.symbol + Separator + FormattedTicketNumber;
+            displayTicketNumber = displayticketSymbol + Separator + FormattedTicketNumber;
         }
         else {
-            displayTicketNumber = transaction.symbol + FormattedTicketNumber;
+            displayTicketNumber = displayticketSymbol + FormattedTicketNumber;
         }
         return displayTicketNumber;
     }
@@ -191,46 +203,44 @@ var prepareDisplayTicketNumber = function (transaction, PriorityRangeMaxNo, Sepa
 
 var timeProirityValue = function (transaction) {
     //Return the priority of this transaction; using priority time and priority
-    return ((Date.now() - transaction.priorityTime) * transaction.priority * 1000);
+    return ((commonMethods.Now() - transaction.priorityTime) * transaction.priority * 1000);
 };
 
-var holdCurrentCustomer = function (errors, OrgID, BranchID, CounterID, HoldReason_ID, HeldTransactions) {
+var holdCurrentCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, HoldReason_ID, HeldTransactions) {
     try {
-        let CurrentCustomerTransaction = new transaction();
-
-        //Get Max Seq
-        let Now = Date.now();
-        //Get Branch Data
-        let BracnhData = dataService.getBranchData(OrgID, BranchID);
         let result = common.error;
+        let output = [];
+        //Get Max Seq
+        let Now = commonMethods.Now();
+        //Get Branch Data
+        dataService.getCurrentData(OrgID, BranchID, CounterID, output) ;
+        let BracnhData = output[0];
+        let Current_Counter_Data = output[1];
+        let CurrentCustomerTransaction = output[3];
+
+        if (!BracnhData || !Current_Counter_Data) {
+            return result;
+        }
+       
         //Get the transactions that can be served
         if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
-
             //Finish Serving the previous Ticket if exists
-            let Current_Counter_Data;
-            Current_Counter_Data = dataService.getCounterData(BracnhData, CounterID)
-
-            if (Current_Counter_Data && Current_Counter_Data.currentTransaction_ID) {
-                CurrentCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
-                    return transaction_Data.id == Current_Counter_Data.currentTransaction_ID;
-                }
-                );
-                Current_Counter_Data.currentTransaction_ID = undefined;
+            if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
                 Current_Counter_Data.currentTransaction = undefined;
                 //Update the tranasaction to hold
                 if (CurrentCustomerTransaction) {
                     CurrentCustomerTransaction.state = enums.StateType.OnHold;
-                    CurrentCustomerTransaction.holdCount += 1;
-                    CurrentCustomerTransaction.serviceSeconds = CurrentCustomerTransaction.serviceSeconds + ((Now - CurrentCustomerTransaction.startServingTime) / 1000);
+                    CurrentCustomerTransaction.holdingCount += 1;
+                    CurrentCustomerTransaction.servingSeconds = CurrentCustomerTransaction.servingSeconds + ((Now - CurrentCustomerTransaction.servingStartTime) / 1000);
                     CurrentCustomerTransaction.waitingStartTime = Now;
                     CurrentCustomerTransaction.heldByCounter_ID = CounterID;
-                    CurrentCustomerTransaction.holdReason_ID = HoldReason_ID;
+                    CurrentCustomerTransaction.holdingReason_ID = HoldReason_ID;
                 }
             }
 
             //Update the old
             if (CurrentCustomerTransaction) {
-                UpdateTransaction(CurrentCustomerTransaction);
+                UpdateTransaction(RequestID, CurrentCustomerTransaction);
                 HeldTransactions.push(CurrentCustomerTransaction);
             }
         }
@@ -243,19 +253,18 @@ var holdCurrentCustomer = function (errors, OrgID, BranchID, CounterID, HoldReas
         errors.push(error.toString());
         return common.error;
     }
-
 }
 function closeTransaction(BracnhData, CurrentCustomerTransaction) {
     try {
-        let Now = Date.now();
+        let Now = commonMethods.Now();
         CurrentCustomerTransaction.state = enums.StateType.closed;
-        CurrentCustomerTransaction.endServingTime = Now;
-        CurrentCustomerTransaction.closeTime = Now;
-        CurrentCustomerTransaction.serviceSeconds = CurrentCustomerTransaction.serviceSeconds + ((Now - CurrentCustomerTransaction.startServingTime) / 1000);
+        CurrentCustomerTransaction.servingEndTime = Now;
+        CurrentCustomerTransaction.closedTime = Now;
+        CurrentCustomerTransaction.servingSeconds = CurrentCustomerTransaction.servingSeconds + ((Now - CurrentCustomerTransaction.servingStartTime) / 1000);
 
         //Get min service time to determine the serving type
         let serviceConfig = configurationService.getServiceConfigFromService(CurrentCustomerTransaction.service_ID);
-        if (CurrentCustomerTransaction.serviceSeconds < serviceConfig.MinServiceTime) {
+        if (CurrentCustomerTransaction.servingSeconds < serviceConfig.MinServiceTime) {
             CurrentCustomerTransaction.servingType = enums.CustomerServingType.NoShow;
         }
         else {
@@ -269,7 +278,7 @@ function closeTransaction(BracnhData, CurrentCustomerTransaction) {
         }
         );
         BracnhData.visitData = BracnhData.visitData.filter(function (visitData) {
-            return visitData.visit_ID != CurrentCustomerTransactionID;
+            return visitData.queueBranchVisitID != CurrentCustomerTransactionID;
         }
         );
     }
@@ -279,33 +288,34 @@ function closeTransaction(BracnhData, CurrentCustomerTransaction) {
         return common.error;
     }
 }
-var finishCurrentCustomer = function (errors, OrgID, BranchID, CounterID, FinishedTransaction) {
+var finishCurrentCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, FinishedTransaction) {
     try {
-        let CurrentCustomerTransaction;
+        let output = [];
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(OrgID, BranchID);
+        dataService.getCurrentData(OrgID, BranchID, CounterID, output) ;
+        let BracnhData =  output[0];
+        let Current_Counter_Data = output[1];
+        let CurrentActivity = output[2];
+        let CurrentCustomerTransaction = output[3];
+
+        if (!BracnhData || !Current_Counter_Data) {
+            return common.error;
+        }
         //Get the transactions that can be served
         if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
             //Finish Serving the previous Ticket if exists
-            let Current_Counter_Data;
-            Current_Counter_Data = dataService.getCounterData(BracnhData, CounterID)
-
-            if (Current_Counter_Data && Current_Counter_Data.currentTransaction_ID) {
-                CurrentCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
-                    return transaction_Data.id == Current_Counter_Data.currentTransaction_ID;
-                }
-                );
-                Current_Counter_Data.currentTransaction_ID = undefined;
+            if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
                 Current_Counter_Data.currentTransaction = undefined;
                 if (CurrentCustomerTransaction) {
                     closeTransaction(BracnhData, CurrentCustomerTransaction)
                     //Update the old
-                    UpdateTransaction(CurrentCustomerTransaction);
+                    UpdateTransaction(RequestID, CurrentCustomerTransaction);
                     FinishedTransaction.push(CurrentCustomerTransaction);
                 }
             }
         }
         return common.success;
+
     }
     catch (error) {
         logger.logError(error);
@@ -316,16 +326,16 @@ var finishCurrentCustomer = function (errors, OrgID, BranchID, CounterID, Finish
 
 function PrepareTransctionFromOriginal(OriginalTransaction, NewTransaction) {
     try {
-        let Now = Date.now();
-        NewTransaction.visit_ID = OriginalTransaction.visit_ID;
-        NewTransaction.org_ID = OriginalTransaction.org_ID;
-        NewTransaction.branch_ID = OriginalTransaction.branch_ID;
+        let Now = commonMethods.Now();
+        NewTransaction.queueBranchVisitID = OriginalTransaction.queueBranchVisitID;
+        NewTransaction.orgID = OriginalTransaction.orgID;
+        NewTransaction.queueBranch_ID = OriginalTransaction.queueBranch_ID;
         NewTransaction.ticketSequence = OriginalTransaction.ticketSequence;
-        NewTransaction.symbol = OriginalTransaction.symbol;
+        NewTransaction.ticketSymbol = OriginalTransaction.ticketSymbol;
         NewTransaction.hall_ID = OriginalTransaction.hall_ID;
         NewTransaction.servingSession = OriginalTransaction.servingSession;
         NewTransaction.orderOfServing = OriginalTransaction.orderOfServing;
-        NewTransaction.serveStep = OriginalTransaction.serveStep + 1;
+        NewTransaction.servingStep = OriginalTransaction.servingStep + 1;
         NewTransaction.displayTicketNumber = OriginalTransaction.displayTicketNumber;
         NewTransaction.state = enums.StateType.Pending;
         NewTransaction.segment_ID = OriginalTransaction.segment_ID;
@@ -369,13 +379,17 @@ function GetProiorityRange(segment_ID, service_ID) {
 }
 function CreateAddServiceTransaction(ServiceID, OriginalTransaction, AddedServiceTransaction) {
     try {
+        let Now = commonMethods.Now();
         PrepareTransctionFromOriginal(OriginalTransaction, AddedServiceTransaction);
+        AddedServiceTransaction.servingStartTime = Now;
         AddedServiceTransaction.origin = enums.OriginType.AddService;
         AddedServiceTransaction.service_ID = ServiceID;
         //Set the Order of serving
         let Service = configurationService.configsCache.services.find(function (service) { return service.ID == ServiceID });
+        if (!Service) {
+            return common.error;
+        }
         AddedServiceTransaction.orderOfServing = Service.OrderOfServing;
-
         let PriorityRange = GetProiorityRange(AddedServiceTransaction.segment_ID, AddedServiceTransaction.service_ID);
 
         //if the service is on the same segment
@@ -410,11 +424,11 @@ function CreateAddServiceTransaction(ServiceID, OriginalTransaction, AddedServic
 }
 
 
-var addService = function (errors, OrgID, BranchID, CounterID, ServiceID, resultArgs) {
+var addService = function (errors, RequestID, OrgID, BranchID, CounterID, ServiceID, resultArgs) {
     try {
         let result = common.error;
         let FinishedTransaction = [];
-        result = finishCurrentCustomer(errors, OrgID, BranchID, CounterID, FinishedTransaction)
+        result = finishCurrentCustomer(errors, RequestID, OrgID, BranchID, CounterID, FinishedTransaction)
         if (result == common.success) {
             resultArgs.push(FinishedTransaction[0]);
             //Create the new transaction
@@ -422,11 +436,13 @@ var addService = function (errors, OrgID, BranchID, CounterID, ServiceID, result
             let AddedServiceTransaction = new transaction();
             result = CreateAddServiceTransaction(ServiceID, OriginalTransaction, AddedServiceTransaction);
             if (result == common.success) {
+                //Set serving counters and Users 
+                result = workFlowManager.setServingProperitiesOnTransaction(AddedServiceTransaction);
                 //Create on Database
-                result = AddTransaction(AddedServiceTransaction);
+                result = AddTransaction(RequestID, AddedServiceTransaction);
                 if (result == common.success) {
                     //Start serving the new transaction
-                    result = serveCustomer(errors, OrgID, BranchID, CounterID, AddedServiceTransaction.id, resultArgs)
+                    result = serveCustomer(errors, RequestID, OrgID, BranchID, CounterID, AddedServiceTransaction.id, resultArgs)
                 }
             }
         }
@@ -442,7 +458,7 @@ var addService = function (errors, OrgID, BranchID, CounterID, ServiceID, result
 function UpdateTransactionToStartServing(NextCustomerTransaction, CounterID) {
     try {
         //Get Max Seq
-        let Now = Date.now();
+        let Now = commonMethods.Now();
         if (NextCustomerTransaction.state == enums.StateType.Pending) {
             NextCustomerTransaction.state = enums.StateType.Serving;
         }
@@ -455,7 +471,7 @@ function UpdateTransactionToStartServing(NextCustomerTransaction, CounterID) {
         }
         NextCustomerTransaction.waitingSeconds = NextCustomerTransaction.waitingSeconds + ((Now - NextCustomerTransaction.waitingStartTime) / 1000);
         NextCustomerTransaction.counter_ID = CounterID;
-        NextCustomerTransaction.startServingTime = Now;
+        NextCustomerTransaction.servingStartTime = Now;
         NextCustomerTransaction.lastCallTime = Now;
     }
     catch (error) {
@@ -464,7 +480,7 @@ function UpdateTransactionToStartServing(NextCustomerTransaction, CounterID) {
     }
 }
 
-var serveCustomer = function (errors, OrgID, BranchID, CounterID, TransactionID, resultArgs) {
+var serveCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, TransactionID, resultArgs) {
     try {
 
         let NextCustomerTransaction = new transaction();
@@ -474,20 +490,34 @@ var serveCustomer = function (errors, OrgID, BranchID, CounterID, TransactionID,
         //Branch Config
         let branch = configurationService.getBranchConfig(BranchID);
 
+        //counter Config
+        let counter = configurationService.getCounterConfig(CounterID);
+
+        if (!BracnhData || !counter) {
+            //Invalid counter or branch
+            return common.error;
+        }
+
         //Get the transactions that can be served
-        if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
+        if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0 && TransactionID) {
             NextCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
                 return transaction_Data.id.toString() == TransactionID.toString();
             });
             if (NextCustomerTransaction) {
+                //Validate the serve customer state
+                let InvalidStates = [enums.StateType.closed, enums.StateType.Serving, enums.StateType.servingRecall];
+                if (InvalidStates.indexOf(NextCustomerTransaction.state) > -1) {
+                    return common.error;
+                }
+
                 //Change the state depending on the previous
-                UpdateTransactionToStartServing(NextCustomerTransaction);
+                UpdateTransactionToStartServing(NextCustomerTransaction, CounterID);
 
                 //Set the transaction on the current counter
                 setCounterCurrentTransaction(errors, BracnhData, CounterID, NextCustomerTransaction)
 
                 //update the new
-                UpdateTransaction(NextCustomerTransaction);
+                UpdateTransaction(RequestID, NextCustomerTransaction);
                 resultArgs.push(NextCustomerTransaction);
             }
         }
@@ -566,15 +596,14 @@ function isTransactionAllocated(segment_ID, service_ID, isAllSegments_Allocated,
         return false;
     }
 }
-function isTransactionServable(transaction_Data, counter, allocated_segments, allocated_services) {
+
+function isTransactionServable(transaction_Data, counter) {
     try {
         let servable = false;
-        let isAllSegments_Allocated = (counter.SegmentAllocationType == enums.SegmentAllocationType.SelectAll);
         if (transaction_Data.state == enums.StateType.Pending || transaction_Data.state == enums.StateType.PendingRecall) {
-            if (transaction_Data.hall_ID && counter.Hall_ID.toString() != transaction_Data.hall_ID.toString()) {
-                return false;
+            if (transaction_Data._servingCounters && transaction_Data._servingCounters.indexOf(counter.ID) > -1 && transaction_Data._isCalledByNextAllowed) {
+                servable = true;
             }
-            servable = isTransactionAllocated(transaction_Data.segment_ID, transaction_Data.service_ID, isAllSegments_Allocated, allocated_segments, allocated_services)
         }
         return servable;
     }
@@ -584,17 +613,15 @@ function isTransactionServable(transaction_Data, counter, allocated_segments, al
     }
 }
 
-function getServableTransaction(branch, BracnhData, counter) {
+function getServableTransaction(BranchData, counter) {
     try {
-
-        //Get Allocated Segments
-        let allocated_segments = getAllocatedSegments(branch, counter);
-
-        //Get Allocated Service
-        var allocated_services = getAllocatedServices(branch, counter);
-
-        let transactions = BracnhData.transactionsData.filter(function (transaction_Data) {
-            return isTransactionServable(transaction_Data, counter, allocated_segments, allocated_services);
+        let DisabledServiceDueToMaxServingLimit = workFlowManager.getDisabledServiceDueToMaxServingLimit(BranchData);
+        let transactions = BranchData.transactionsData.filter(function (transaction_Data) {
+            //If the Service is disabled because it reached the max serving counters
+            if (DisabledServiceDueToMaxServingLimit && DisabledServiceDueToMaxServingLimit.indexOf(transaction_Data.service_ID) > -1) {
+                return false;
+            }
+            return isTransactionServable(transaction_Data, counter);
         }
         );
         return transactions;
@@ -613,7 +640,6 @@ function setCounterCurrentTransaction(errors, BracnhData, CounterID, NextCustome
         for (let i = 0; i < BracnhData.countersData.length; i++) {
             if (BracnhData.countersData[i].id == CounterID) {
                 found = true;
-                BracnhData.countersData[i].currentTransaction_ID = NextCustomerTransaction.id;
                 BracnhData.countersData[i].currentTransaction = NextCustomerTransaction;
                 break;
             }
@@ -621,7 +647,6 @@ function setCounterCurrentTransaction(errors, BracnhData, CounterID, NextCustome
         if (!found) {
             let tcounterData = new counterData();
             tcounterData.id = NextCustomerTransaction.counter_ID;
-            tcounterData.currentTransaction_ID = NextCustomerTransaction.id;
             tcounterData.currentTransaction = NextCustomerTransaction;
             BracnhData.countersData.push(tcounterData);
         }
@@ -653,43 +678,374 @@ function GetHighestPriorityTransaction(errors, transactions) {
     }
 }
 
+function calculateTransactionSegmentAndPriority(BranchConfig, ToCounterConfig, transaction) {
+    try {
+        let UserConfig;
+        let UserID;
+        let Segments = [];
+        let service_ID = parseFloat(transaction.service_ID);
+        let segment_ID = parseFloat(transaction.segment_ID);
+        let BranchData = dataService.getBranchData(BranchConfig.OrgID, BranchConfig.ID);
+        let ToCounterData = dataService.getCounterData(BranchData, ToCounterConfig.ID);
+        let CurrentActivity = ToCounterData.currentState;
+        if (CurrentActivity) {
+            UserID = CurrentActivity.user_ID;
+            UserConfig = configurationService.getUserConfig(UserID);
+        }
+        let AllocationType = configurationService.getCommonSettings(BranchConfig.ID, constants.ServiceAllocationTypeKey);
+        let isSegmentAllocatedOnServingEntity = workFlowManager.isSegmentAllocated(BranchConfig, ToCounterConfig, UserConfig, transaction.segment_ID, AllocationType);
+
+        //Get Range properities
+        let PriorityRange = GetProiorityRange(segment_ID, service_ID);
+
+        //if the service- segment okay and segment is allocated
+        if (PriorityRange && isSegmentAllocatedOnServingEntity == true) {
+            if (transaction.priority != constants.RESERVATION_SERVICES_PROIRITY) {
+                transaction.priority = PriorityRange.Priority;
+            }
+            return common.success;
+        }
+
+        //Otherwise we have to get average and other segment
+        workFlowManager.getAllocatedSegments(BranchConfig.orgID, BranchConfig.ID, ToCounterConfig.ID, UserID, Segments)
+        let serviceSegmentPriorityRange = configurationService.configsCache.serviceSegmentPriorityRanges.filter(function (PriorityRange) {
+            return PriorityRange.Service_ID == service_ID;
+        });
+
+        if (serviceSegmentPriorityRange && Segments) {
+            let validRanges = serviceSegmentPriorityRange.filter(function (PriorityRange) {
+                return Segments.indexOf(PriorityRange.Segment_ID) > -1;
+            });
+            if (validRanges) {
+                let sum = 0;
+                validRanges.forEach(function (PriorityRange) {
+                    sum = sum + PriorityRange.Priority;
+                });
+                //set the average and the first valid segment
+                transaction.priority = (sum / validRanges.length);
+                transaction.segment_ID = validRanges[0].Segment_ID;
+            }
+        }
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        errors.push(error.toString());
+        return common.error;
+    }
+}
+
+
+function validateServiceTransfferedTransaction(BranchConfig, transaction) {
+    try {
+
+        let service_ID = parseFloat(transaction.service_ID);
+        let segment_ID = parseFloat(transaction.segment_ID);
+        let AllocationType = configurationService.getCommonSettings(BranchConfig.ID, constants.ServiceAllocationTypeKey);
+        let isValid = false;
+        let isSegmentAllocatedOnServingEntity = false;
+        let AllocatedEntitiesOnService = workFlowManager.getAllocatedEntitiesOnService(BranchConfig.ID, service_ID, AllocationType)
+        let AllocatedEntitiesOnSegment = workFlowManager.getAllocatedEntitiesOnSegment(BranchConfig, segment_ID, AllocationType)
+        if (!AllocatedEntitiesOnService || !AllocatedEntitiesOnSegment) {
+            return isValid;
+        }
+        let validEntities;
+        if (AllocationType == enums.AllocationTypes.Counter) {
+            let counterOnSameHall = AllocatedEntitiesOnService.filter(function (counter) {
+                return counter.Hall_ID == transaction.hall_ID;
+            });
+
+            if (counterOnSameHall) {
+                validEntities = counterOnSameHall.filter(function (counter) { return AllocatedEntitiesOnSegment.indexOf(counter.ID) > -1 })
+            }
+        }
+
+        if (validEntities && validEntities.length > 0) {
+            return common.success;
+        }
+        return common.error;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
+function validateCounterTransfferedTransaction(BranchConfig, ToCounterConfig, transaction) {
+    try {
+
+        let UserConfig;
+        let UserID;
+        let service_ID = parseFloat(transaction.service_ID);
+        let segment_ID = parseFloat(transaction.segment_ID);
+        let CounterID = parseFloat(ToCounterConfig.ID);
+        let BranchData = dataService.getBranchData(BranchConfig.OrgID, BranchConfig.ID);
+        let ToCounterData = dataService.getCounterData(BranchData, CounterID);
+        let CurrentActivity = ToCounterData.currentState;
+        if (CurrentActivity) {
+            UserID = CurrentActivity.user_ID;
+            UserConfig = configurationService.getUserConfig(UserID);
+        }
+        let AllocationType = configurationService.getCommonSettings(BranchConfig.ID, constants.ServiceAllocationTypeKey);
+        let isSegmentAllocatedOnServingEntity = workFlowManager.isSegmentAllocated(BranchConfig, ToCounterConfig, UserConfig, segment_ID, AllocationType);
+        let AllocatedServices = workFlowManager.getAllocatedServicesOnEntity(BranchConfig, CounterID, UserID, AllocationType);
+        let isServiceAllocatedOnServingEntity = false;
+        if (AllocatedServices) {
+            isServiceAllocatedOnServingEntity = (AllocatedServices.indexOf(service_ID) > -1);
+        }
+        if (isSegmentAllocatedOnServingEntity && isServiceAllocatedOnServingEntity) {
+            return common.success;
+        }
+        return common.error;
+    }
+    catch (error) {
+        logger.logError(error);
+        errors.push(error.toString());
+        return common.error;
+    }
+}
+
+var transferToCounter = function (errors, RequestID, OrgID, BranchID, CounterID, ToCounterID, Transactions) {
+    try {
+        let CurrentCustomerTransaction;
+        let result = common.error;
+        //Get Branch Data
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
+
+        //Branch Config
+        let branchConfig = configurationService.getBranchConfig(BranchID);
+
+        let CounterConfig = configurationService.getCounterConfig(CounterID);
+        let ToCounterConfig = configurationService.getCounterConfig(ToCounterID);
+
+
+        if (!branchConfig || !BracnhData) {
+            errors.push("Invalid Branch ID");
+            return common.error;
+        }
+
+        if (!CounterConfig || !ToCounterConfig) {
+            errors.push("Invalid counter(s) ID From or TO");
+            return common.error;
+        }
+
+        let NewTransaction = new transaction();
+        //get counter data
+        let Current_Counter_Data;
+        Current_Counter_Data = dataService.getCounterData(BracnhData, CounterID)
+
+
+        if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
+            CurrentCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
+                return transaction_Data.id == Current_Counter_Data.currentTransaction.id;
+            }
+            );
+            PrepareTransctionFromOriginal(CurrentCustomerTransaction, NewTransaction);
+            let ServiceID = CurrentCustomerTransaction.service_ID;
+            let ServiceConfig = configurationService.getService(ServiceID);
+            NewTransaction.service_ID = ServiceID;
+            NewTransaction.orderOfServing = ServiceConfig.OrderOfServing;
+            NewTransaction.transferByCounter_ID = CounterID;
+            NewTransaction.transferByUser_ID = Current_Counter_Data.currentState.user_ID;
+            NewTransaction.transferredFromService_ID = CurrentCustomerTransaction.service_ID;
+            NewTransaction.priority = CurrentCustomerTransaction.priority;
+
+            result = calculateTransactionSegmentAndPriority(branchConfig, ToCounterConfig, NewTransaction);
+            if (result == common.success) {
+                NewTransaction.hall_ID = ToCounterConfig.Hall_ID;
+                NewTransaction.counter_ID = ToCounterID;
+                NewTransaction.origin = enums.OriginType.TransferToCounter;
+                result = validateCounterTransfferedTransaction(branchConfig, ToCounterConfig, NewTransaction);
+                //TODO Add pre-service to the transfer
+                if (result == common.success) {
+                    //Set serving counters and Users 
+                    result = workFlowManager.setServingProperitiesOnTransaction(NewTransaction);
+                    Transactions.push(NewTransaction);
+                    //Create on Database
+                    result = AddTransaction(RequestID, NewTransaction);
+                }
+            }
+
+            return result;
+        }
+        return common.error;
+    }
+    catch (error) {
+        logger.logError(error);
+        errors.push(error.toString());
+        return common.error;
+    }
+};
+
+function checkIfServiceEnabled(OrgID, BranchID, ServiceConfig) {
+    try {
+        let result = true;
+        let Service = ServiceConfig;
+        let ServiceID = Service.ID;
+        if (Service.MaxCustomersPerDay > 0) {
+            //calculate the customers number 
+            let FilterStatistics = new statisticsData();
+            FilterStatistics.queueBranch_ID = BranchID;
+            FilterStatistics.service_ID = ServiceID;
+            let statistics = statisticsManager.GetSpecificStatistics(FilterStatistics);
+            if (statistics) {
+                let CurrentCustomerNO = (statistics.ServedCustomersNo + statistics.WaitingCustomers + statistics.NoShowCustomersNo + 1);
+                result = (Service.MaxCustomersPerDay > CurrentCustomerNO);
+            }
+            else {
+                result = false;
+            }
+        }
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+}
+function checkIfFormNeeded(OrgID, BranchID, ServiceID) {
+    let argSuppressDisplayNoActiveEmployeesMsg = true;
+    let pSuppressDisplayCIForm = true;
+    //Check if there are logged-in employees to serve this service
+    if (!argSuppressDisplayNoActiveEmployeesMsg) {
+        return mdlData.cDISPLAY_NOT_LOGIN_MSG;
+    }
+
+    //Display customer information form if the destination service needs that
+    if (!pSuppressDisplayCIForm) {
+        return mdlData.cDISPLAY_CUSTOMER_INFO_FORM;
+    }
+    return common.success;
+}
+var transferToService = function (errors, RequestID, OrgID, BranchID, CounterID, ServiceID, Parameters, Transactions) {
+    try {
+        let result = common.error;
+        let ServiceConfig = configurationService.getService(ServiceID);
+        if (!ServiceConfig) {
+            errors.push("Invalid service ID");
+            return common.error;
+        }
+        //TODO: these check if the feature is needed later
+        let isServiceEnabled = checkIfServiceEnabled(OrgID, BranchID, ServiceConfig);
+        if (!isServiceEnabled) {
+            return result;
+        }
+
+        result = checkIfFormNeeded(OrgID, BranchID, ServiceID);
+        //TODO
+        if (result != common.success) {
+            return result;
+        }
+
+        let CurrentCustomerTransaction;
+        //Get Branch Data
+        let BracnhData = dataService.getBranchData(OrgID, BranchID);
+
+        //Branch Config
+        let branchConfig = configurationService.getBranchConfig(BranchID);
+
+        let CounterConfig = configurationService.getCounterConfig(CounterID);
+
+        if (!CounterConfig) {
+            errors.push("Invalid counter(s) ID From or TO");
+            return common.error;
+        }
+        let NewTransaction = new transaction();
+        //get counter data
+        let Current_Counter_Data;
+        Current_Counter_Data = dataService.getCounterData(BracnhData, CounterID)
+
+
+        if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
+            CurrentCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
+                return transaction_Data.id == Current_Counter_Data.currentTransaction.id;
+            }
+            );
+            PrepareTransctionFromOriginal(CurrentCustomerTransaction, NewTransaction);
+
+            NewTransaction.service_ID = ServiceID;
+            NewTransaction.orderOfServing = ServiceConfig.OrderOfServing;
+            NewTransaction.transferByCounter_ID = CounterID;
+            NewTransaction.transferByUser_ID = Current_Counter_Data.currentState.user_ID;
+            NewTransaction.transferredFromService_ID = CurrentCustomerTransaction.service_ID;
+            NewTransaction.priority = CurrentCustomerTransaction.priority;
+
+            result = calculateTransactionSegmentAndPriority(branchConfig, CounterConfig, NewTransaction);
+            if (result == common.success) {
+                //Get hall ID 
+                let All_Halls = [];
+                let Allocated_Halls = [];
+                //Finally Hall ID
+                NewTransaction.hall_ID = CounterConfig.Hall_ID;
+                let BestHall_ID = getHallID(NewTransaction, All_Halls, Allocated_Halls);
+                if (Allocated_Halls.indexOf(CounterConfig.Hall_ID) == -1) {
+                    NewTransaction.hall_ID = BestHall_ID;
+                }
+                NewTransaction.origin = enums.OriginType.TransferToService;
+                result = validateServiceTransfferedTransaction(branchConfig, NewTransaction);
+                //TODO Add pre-service to the transfer
+                if (result == common.success) {
+                    //Set serving counters and Users 
+                    result = workFlowManager.setServingProperitiesOnTransaction(NewTransaction);
+
+                    Transactions.push(NewTransaction);
+                    //Create on Database
+                    result = AddTransaction(RequestID, NewTransaction);
+                }
+            }
+            return result;
+        }
+        return common.error;
+    }
+    catch (error) {
+        logger.logError(error);
+        errors.push(error.toString());
+        return common.error;
+    }
+};
+
+
 //Get Next Customer
-var getNextCustomer = function (errors, OrgID, BranchID, CounterID, resultArgs) {
+var getNextCustomer = function (errors, RequestID, OrgID, BranchID, CounterID, resultArgs) {
     try {
 
         let NextCustomerTransaction = new transaction();
         //Get Branch Data
         let BracnhData = dataService.getBranchData(OrgID, BranchID);
-
         //Branch Config
         var branch = configurationService.getBranchConfig(BranchID);
-
+        //Check invalid branch
+        if (!branch) {
+            return common.error;
+        }
         //Branch Counters to get the specific counter
         var counter = branch.counters.find(function (value) {
             return value.ID == CounterID;
         });
-
+        //Check invalid counter
+        if (!counter) {
+            return common.error;
+        }
         //Get the transactions that can be served
         if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
             //Get Servable Tickets
-            let transactions = getServableTransaction(branch, BracnhData, counter);
+            let transactions = getServableTransaction(BracnhData, counter);
 
             //Get Ticket With max Priority
             NextCustomerTransaction = GetHighestPriorityTransaction(errors, transactions);
             if (NextCustomerTransaction) {
                 //Start Serving the ticket
-                let Now = Date.now();
+                let Now = commonMethods.Now();
                 NextCustomerTransaction.lastCallTime = Now;
-                NextCustomerTransaction.startServingTime = Now;
+                NextCustomerTransaction.servingStartTime = Now;
                 NextCustomerTransaction.state = enums.StateType.Serving;
                 NextCustomerTransaction.counter_ID = CounterID;
-                NextCustomerTransaction.serveStep = 1;
+                NextCustomerTransaction.servingStep = 1;
                 NextCustomerTransaction.lastOfVisit = 1;
-                NextCustomerTransaction.waitingSeconds = NextCustomerTransaction.waitingSeconds + ((NextCustomerTransaction.startServingTime - NextCustomerTransaction.waitingStartTime) / 1000);
+                NextCustomerTransaction.waitingSeconds = NextCustomerTransaction.waitingSeconds + ((NextCustomerTransaction.servingStartTime - NextCustomerTransaction.waitingStartTime) / 1000);
 
                 setCounterCurrentTransaction(errors, BracnhData, CounterID, NextCustomerTransaction);
                 //update the new
-                UpdateTransaction(NextCustomerTransaction);
+                UpdateTransaction(RequestID, NextCustomerTransaction);
                 resultArgs.push(NextCustomerTransaction);
             }
         }
@@ -874,17 +1230,21 @@ function GetMaxTransactionSequence(transactions, Max_TicketNumber, Min_TicketNum
 }
 
 function isTransactionFromSameSequence(transactionData, NewTransaction) {
-    let Now = new Date;
-    let Today = Now.setHours(0, 0, 0, 0);
-    let Tomorrow = Now.setHours(23, 59, 59, 9999);
-    return transactionData.branch_ID == NewTransaction.branch_ID && transactionData.symbol == NewTransaction.symbol && parseFloat(transactionData.creationTime) > Today && parseFloat(transactionData.creationTime) < Tomorrow ;
+    try {
+        let Today = commonMethods.Today();
+        let Tomorrow = commonMethods.Tomorrow();
+        return transactionData.queueBranch_ID == NewTransaction.queueBranch_ID && transactionData.ticketSymbol == NewTransaction.ticketSymbol && (transactionData.creationTime > Today) && (transactionData.creationTime < Tomorrow);
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
 }
 
 //Get SequenceRange and get sequence
 function GetSequenceForFirstTime(BracnhData, transaction, Max_TicketNumber, Min_TicketNumber, EnableHallSlipRange) {
     try {
-        let Now = new Date;
-        let Today = Now.setHours(0, 0, 0, 0);
+        let Today = commonMethods.Today();
         let ticketSequence = 0;
         let transactions;
         if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
@@ -899,7 +1259,7 @@ function GetSequenceForFirstTime(BracnhData, transaction, Max_TicketNumber, Min_
         //Add sequence to the branch data
         let ticketSeqData = new TicketSeqData();
         ticketSeqData.hall_ID = transaction.hall_ID;
-        ticketSeqData.symbol = transaction.symbol;
+        ticketSeqData.ticketSymbol = transaction.ticketSymbol;
         ticketSeqData.sequence = ticketSequence;
         ticketSeqData.time = Today;
         BracnhData.ticketSeqData.push(ticketSeqData);
@@ -908,7 +1268,7 @@ function GetSequenceForFirstTime(BracnhData, transaction, Max_TicketNumber, Min_
     }
     catch (error) {
         logger.logError(error);
-        return -1;
+        return common.error;
     }
 }
 
@@ -916,17 +1276,15 @@ function GetSequenceForFirstTime(BracnhData, transaction, Max_TicketNumber, Min_
 function getNextSequenceNumber(BracnhData, transaction, Max_TicketNumber, Min_TicketNumber, EnableHallSlipRange) {
     try {
 
-        let Now = new Date;
-        let Today = Now.setHours(0, 0, 0, 0);
-
+        let Today = commonMethods.Today();
         let ticketSequence = 0;
         //Get the sequence if exists in the memory
         let ticketSeqData = BracnhData.ticketSeqData.find(function (value) {
-            return value.symbol == transaction.symbol && (value.hall_ID == transaction.hall_ID || EnableHallSlipRange == "0");
+            return value.ticketSymbol == transaction.ticketSymbol && (value.hall_ID == transaction.hall_ID || EnableHallSlipRange == "0");
         }
         );
 
-        if (ticketSeqData != null && ticketSeqData.time == Today) {
+        if (ticketSeqData != null && ticketSeqData.time.toString() == Today.toString()) {
             //Update the existing Seq
             ticketSequence = ticketSeqData.sequence + 1;
             if (ticketSequence > Max_TicketNumber) {
@@ -975,7 +1333,7 @@ function getTransactionSequence(PriorityRange, transaction) {
     try {
         let ticketSequence = 0;
         //Get Branch Data
-        let BracnhData = dataService.getBranchData(transaction.org_ID, transaction.branch_ID);
+        let BracnhData = dataService.getBranchData(transaction.orgID, transaction.queueBranch_ID);
         if (BracnhData != null) {
             let Max_TicketNumber = PriorityRange.MaxSlipNo;
             let Min_TicketNumber = PriorityRange.MinSlipNo;
@@ -985,9 +1343,8 @@ function getTransactionSequence(PriorityRange, transaction) {
             //Finally Hall ID
             transaction.hall_ID = getHallID(transaction, All_Halls, Allocated_Halls);
             if (!transaction.hall_ID) {
-                let error = "Error in getting hall id for the customer";
+                let error = "Error in getting hall ID for the customer check service and segment allocations";
                 logger.logError(error);
-                errors.push(error.toString());
                 return common.error;
             }
 
@@ -1008,10 +1365,10 @@ function getTransactionSequence(PriorityRange, transaction) {
 
 
 //Issue ticket
-var issueSingleTicket = function (errors, transaction) {
+var issueSingleTicket = function (errors, RequestID, transaction) {
     try {
         let result = common.error;
-        let now = Date.now();
+        let now = commonMethods.Now();
         transaction.creationTime = now;
         transaction.waitingStartTime = now;
         transaction.priorityTime = transaction.creationTime;
@@ -1025,13 +1382,18 @@ var issueSingleTicket = function (errors, transaction) {
             return common.error;
         }
 
-        transaction.symbol = PriorityRange.Symbol;
+        transaction.ticketSymbol = PriorityRange.Symbol;
         transaction.priority = PriorityRange.Priority;
         //Get Max Seq
         transaction.ticketSequence = getTransactionSequence(PriorityRange, transaction);
         transaction.displayTicketNumber = prepareDisplayTicketNumber(transaction, PriorityRange.MaxSlipNo, Separators[PriorityRange.Separator_LV]);
-        //Create on Database
-        result = AddTransaction(transaction);
+
+        //Set serving counters and Users 
+        result = workFlowManager.setServingProperitiesOnTransaction(transaction);
+        if (result == common.success) {
+            //Create on Database
+            result = AddTransaction(RequestID, transaction);
+        }
         return result;
     }
     catch (error) {
@@ -1048,4 +1410,6 @@ module.exports.finishCurrentCustomer = finishCurrentCustomer;
 module.exports.serveCustomer = serveCustomer;
 module.exports.getNextCustomer = getNextCustomer;
 module.exports.issueSingleTicket = issueSingleTicket;
+module.exports.transferToCounter = transferToCounter;
+module.exports.transferToService = transferToService;
 

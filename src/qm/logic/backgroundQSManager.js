@@ -1,11 +1,9 @@
 "use strict";
 var logger = require("../../common/logger");
 var common = require("../../common/common");
-var enums = require("../../common/enums");
 var constants = require("../../common/constants");
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
-var transactionManager = require("../logic/transactionManager");
 var userActivityManager = require("../logic/userActivityManager");
 var queueCommandManager = require("./queueCommandManager");
 var message = require("../../dataMessage/message");
@@ -35,7 +33,7 @@ var performAutoNextForBranch = async function (branchData) {
             for (let iActivity = 0; iActivity < readyCountersActivities.length; iActivity++) {
                 let activity = readyCountersActivities[iActivity];
                 var counterInfo = {
-                    orgid: activity.org_ID,
+                    orgid: activity.orgID,
                     counterid: activity.counter_ID.toString(),
                     branchid: branchData.id.toString()
                 };

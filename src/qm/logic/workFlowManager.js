@@ -8,7 +8,7 @@ var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
 var statisticsData = require("../data/statisticsData");
 var statisticsManager = require("./statisticsManager");
-var Workflow = require("../data/workflow");
+var serviceWorkflow = require("../data/serviceWorkflow");
 var ServiceAvailableActions = require("../data/serviceAvailableActions");
 var parseString = require('xml2js').parseString;
 
@@ -29,7 +29,7 @@ function getWorkFlow(branchID, service_ID) {
             let workflowXML = workflowRecord.Workflow;
             parseString(workflowXML, function (err, result) {
                 if (result && result.ArrayOfClsKeyData && result.ArrayOfClsKeyData.clsKeyData) {
-                    tWorkflow = new Workflow();
+                    tWorkflow = new serviceWorkflow();
                     result.ArrayOfClsKeyData.clsKeyData.forEach(element => {
                         //Replace the old key with new one of services
                         if (element.Keys) {
@@ -52,7 +52,7 @@ function getWorkFlow(branchID, service_ID) {
     }
     catch (error) {
         logger.logError(error);
-        return new WorkFlow();
+        return new serviceWorkflow();
     }
 
 }
@@ -79,7 +79,22 @@ function MergeAllocationsArrays(allocated_all_segment, allocated_segment) {
         return [];
     }
 }
-
+function getAllocatedEntitiesOnSegment(branchConfig, Segment_ID, AllocationType) {
+    try {
+        let AllcatedEntities = [];
+        if (AllocationType == enums.AllocationTypes.Counter) {
+            AllcatedEntities = getAllocatedCountersOnSegment(branchConfig, Segment_ID);
+        }
+        else {
+            AllcatedEntities = getAllocatedUsersOnSegment(branchConfig, Segment_ID);
+        }
+        return AllcatedEntities;
+    }
+    catch (error) {
+        logger.logError(error);
+        return [];
+    }
+}
 function getAllocatedCountersOnSegment(branch, Segment_ID) {
     try {
         //counters with all segments set
@@ -285,7 +300,7 @@ function isSegmentAllocatedOnUser(BranchConfig, UserConfig, SegmentID) {
         return false;
     }
 }
-function get_GetAllocatedEntities(branchID, Service_ID) {
+function _getAllocatedEntitiesOnService(branchID, Service_ID) {
     try {
         let AllcatedEntities = [];
         let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
@@ -303,7 +318,131 @@ function get_GetAllocatedEntities(branchID, Service_ID) {
     }
 }
 
-function getAllocatedEntitiesOnEntity(BranchConfig, counterID, user_ID, AllocationType) {
+function setServingProperitiesOnTransaction(transaction) {
+    try {
+        //Branch Config
+        let branchID = transaction.queueBranch_ID;
+        let branchConfig = configurationService.getBranchConfig(branchID);
+        if (!branchConfig) {
+            return common.error;
+        }
+        let service_ID = parseFloat(transaction.service_ID);
+        let segment_ID = parseFloat(transaction.segment_ID);
+        //Set list serving attribute
+        let CurrentServiceWorkflow = getWorkFlow(branchID, service_ID);
+        transaction._isRandomCallAllowed = CurrentServiceWorkflow.IsListServingService;
+        transaction._isCalledByNextAllowed = CurrentServiceWorkflow.WaitingCustomersCanBeCalledByNext == "1" ? true : false;
+        if (transaction.counter_ID && transaction.counter_ID > 0) {
+            //If the transaction is counter specific
+            transaction._servingCounters = [transaction.Counter_ID];
+        }
+        else {
+            //Set serving Counters
+            let AllocatedCountersOnService = getAllocatedEntitiesOnService(branchID, service_ID, enums.AllocationTypes.Counter);
+            let AllocatedCountersOnSegment = getAllocatedEntitiesOnSegment(branchConfig, segment_ID, enums.AllocationTypes.Counter);
+            if (AllocatedCountersOnService && AllocatedCountersOnService.length > 0 && AllocatedCountersOnSegment && AllocatedCountersOnSegment.length > 0) {
+                let counters = AllocatedCountersOnService.filter(function (counter) {
+                    return (counter.Hall_ID == transaction.hall_ID && AllocatedCountersOnSegment.indexOf(parseInt(counter.ID)) > -1);
+                });
+                transaction._servingCounters = counters ? counters.map(counter => counter.ID) : [];
+            }
+        }
+        if (transaction.user_ID && transaction.user_ID > 0) {
+            //If the transaction is counter specific
+            transaction._servingUsers = [transaction.user_ID];
+        }
+        else {
+            //Set Serving Users
+            let AllocatedUsersOnService = getAllocatedEntitiesOnService(branchID, service_ID, enums.AllocationTypes.User);
+            let AllocatedUsersOnSegment = getAllocatedEntitiesOnSegment(branchConfig, segment_ID, enums.AllocationTypes.User);
+            if (AllocatedUsersOnService && AllocatedUsersOnService.length > 0 && AllocatedUsersOnSegment && AllocatedUsersOnSegment.length > 0) {
+                let users = AllocatedUsersOnService.filter(function (userID) {
+                    return (AllocatedUsersOnSegment.indexOf(parseInt(userID)) > -1);
+                });
+                transaction._servingUsers = users ? users : [];
+            }
+        }
+        return common.success;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
+
+function getDisabledServiceDueToMaxServingLimit(BranchData) {
+    try {
+        let Services_WorkFlows = [];
+        //Get the branch service and thier workflows
+        configurationService.configsCache.branch_serviceAllocations.forEach(function (serviceAllocation) {
+            if (serviceAllocation.QueueBranch_ID == BranchData.id) {
+                let serviceWork = getWorkFlow(BranchData.id, serviceAllocation.Service_ID);
+                if (serviceWork.EnableLimitMaxCounter ==  "1") {
+                    let Service_WorkFlow = {
+                        id: serviceAllocation.Service_ID,
+                        workflow: serviceWork,
+                        numberOfServingCustomers: 0,
+                        exceededMax: false
+                    }
+                    Services_WorkFlows.push(Service_WorkFlow);
+                }
+                return serviceWork.EnableLimitMaxCounter;
+            }
+            return false;
+        });
+
+        //Sum the serving transaction of each service
+        if (Services_WorkFlows && Services_WorkFlows.length > 0) {
+            let ServingStates = [enums.StateType.Serving, enums.StateType.servingRecall]
+            let servicesIDs = Services_WorkFlows.map(Service_WorkFlow => Service_WorkFlow.id);
+            BranchData.transactionsData.forEach(function (transaction_Data) {
+                if (ServingStates.indexOf(transaction_Data.state) > -1 && servicesIDs.indexOf(Number(transaction_Data.service_ID)) > -1) {
+                    let service_workflow = Services_WorkFlows.find(function (Service) { return Service.id == transaction_Data.service_ID });
+                    service_workflow.numberOfServingCustomers += 1;
+                    if (service_workflow.numberOfServingCustomers > service_workflow.workflow.MaxCounterNumber) {
+                        service_workflow.exceededMax = true;
+                    }
+                }
+            }
+            );
+        }
+
+        //Filter the Number of customer in serving with exceeding the limit
+        let DisabledServiceIDs = [];
+        if (Services_WorkFlows && Services_WorkFlows.length) {
+            let exceededMaxServices = Services_WorkFlows.filter(function (service_workflow) { return service_workflow.exceededMax; })
+            if (exceededMaxServices) {
+                DisabledServiceIDs = exceededMaxServices.map(service_workflow => service_workflow.id);
+            }
+
+        }
+        return DisabledServiceIDs;
+    }
+    catch (error) {
+        logger.logError(error);
+        errors.push(error.toString());
+        return [];
+    }
+}
+
+function getAllocatedEntitiesOnService(branchID, Service_ID, AllocationType) {
+    try {
+        let AllcatedEntities = [];
+        if (AllocationType == enums.AllocationTypes.Counter) {
+            AllcatedEntities = getAllocatedServingCounters(branchID, Service_ID);
+        }
+        else {
+            AllcatedEntities = getAllocatedServingUsers(branchID, Service_ID);
+        }
+        return AllcatedEntities;
+    }
+    catch (error) {
+        logger.logError(error);
+        return;
+    }
+}
+
+function getAllocatedServicesOnEntity(BranchConfig, counterID, user_ID, AllocationType) {
     let allocated_Queue = []
     if (AllocationType == enums.AllocationTypes.Counter) {
         allocated_Queue = getAllocatedServicesOnCounter(BranchConfig, counterID);
@@ -336,7 +475,7 @@ function setServiceListAvailableActions(branchID, Service_ID, AllcatedEntities, 
             ServiceAvailableActions.WaitingListChangeServiceID = tmpWorkFlow.WaitingListChangeServiceID;
             ServiceAvailableActions.ChangeServiceEntities = [];
             if (ServiceAvailableActions.AllowWaitingListServiceChange && ServiceAvailableActions.WaitingListChangeServiceID && ServiceAvailableActions.WaitingListChangeServiceID != "") {
-                let EntitiesOnChangeList = get_GetAllocatedEntities(branchID, ServiceAvailableActions.WaitingListChangeServiceID);
+                let EntitiesOnChangeList = _getAllocatedEntitiesOnService(branchID, ServiceAvailableActions.WaitingListChangeServiceID);
                 let EntitiesForThisService = AllcatedEntities;
                 if (EntitiesOnChangeList != null && EntitiesForThisService != null && EntitiesOnChangeList.Length > 0) {
                     ServiceAvailableActions.ChangeServiceEntities = EntitiesForThisService.filter(value => -1 !== EntitiesOnChangeList.indexOf(value));
@@ -359,7 +498,7 @@ function getServiceAvailableActions(branchID, Service_ID) {
             return;
         }
 
-        AllcatedEntities = get_GetAllocatedEntities(branchID, Service_ID);
+        AllcatedEntities = _getAllocatedEntitiesOnService(branchID, Service_ID);
         //If the Branch was not exist
         if (!AllcatedEntities) {
             return;
@@ -394,7 +533,7 @@ function getServiceAvailableActions(branchID, Service_ID) {
 
             //TODO: fill waiting customers
             let FilterStatistics = new statisticsData();
-            FilterStatistics.branch_ID = branchID;
+            FilterStatistics.queueBranch_ID = branchID;
             FilterStatistics.service_ID = Service_ID;
             let Statistics = statisticsManager.GetSpecificStatistics(FilterStatistics);
             let NumberOfWaitedCustomers = Statistics ? Statistics.WaitedCustomersNo : 0;
@@ -536,7 +675,7 @@ function PrepareTransferCountersList(orgID, branchID, counterID) {
 
             //Check counter state
             let validStates = [enums.UserActiontypes.Ready, enums.UserActiontypes.Serving, enums.UserActiontypes.Processing, enums.UserActiontypes.NoCallServing];
-            let isCounterStateValid = (RestictTrnasferCounterToOpenCounter == false) || (validStates.indexOf(parseInt(CurrentActivity.type)) > -1);
+            let isCounterStateValid = (RestictTrnasferCounterToOpenCounter == false) || (validStates.indexOf(parseInt(CurrentActivity.activityType)) > -1);
             if (tServiceSegmentAvailables && isCounterStateValid) {
                 let User_ID = CurrentActivity ? CurrentActivity.user_ID : "-1";
                 FinalCounterList.push(CounterConfig.ID + "#@%$" + User_ID);
@@ -603,7 +742,7 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
         let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
         //Allow different segments
         let DifferentSegmentTransferEnabled = configurationService.getCommonSettingsBool(branchID, constants.ENABLE_INTER_SEGMENT_TRANSFER);
-        let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
+        let allocated_Queue = getAllocatedServicesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
         //Get The workFlow
         let service_ID = CurrentTransaction.service_ID;
         let CurrentServiceWorkflow = getWorkFlow(branchID, service_ID);
@@ -616,11 +755,11 @@ function PrepareTransferServicesList(orgID, branchID, counterID) {
         for (let index = 0; index < Unlocated_Services.length; index++) {
             let TempService = Unlocated_Services[index];
             //Is Service Allocated on serving 
-            let Entities = get_GetAllocatedEntities(branchID, TempService.ID)
+            let Entities = _getAllocatedEntitiesOnService(branchID, TempService.ID)
             if (!Entities || Entities.length == 0) {
                 continue;
             }
-            if (isServiceValidForTransfer(branchID, CurrentServiceWorkflow, TempService, isSegmentAllocatedOnServingEntity, DifferentSegmentTransferEnabled, CurrentTransaction.segment_ID)) {
+            if (isServiceValidForTransfer(CurrentServiceWorkflow, TempService, isSegmentAllocatedOnServingEntity, DifferentSegmentTransferEnabled, CurrentTransaction.segment_ID)) {
                 TransferServicesList.push(TempService.ID);
             }
         }
@@ -741,7 +880,7 @@ function PrepareAddList(orgID, branchID, counterID) {
         //Get Max Number Of add
         let MaxRequestsPerAddedService = getMaxNumberOfAddedServices(branchID);
         let AllocationType = configurationService.getCommonSettings(branchID, constants.ServiceAllocationTypeKey);
-        let allocated_Queue = getAllocatedEntitiesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
+        let allocated_Queue = getAllocatedServicesOnEntity(BranchConfig, counterID, CurrentActivity.user_ID, AllocationType);
         let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
 
 
@@ -772,13 +911,13 @@ function IsTransferBackAllowedForCounter(branchID, CurrentTransaction) {
 
     let t_IsTransferBackAllowedForCounter = false;
     //Check if the user has the service and he is logged in a counter
-    if (CurrentTransaction.transferredByCounter_ID == "" && CurrentTransaction.transferredFromService_ID == "") {
+    if (CurrentTransaction.transferByCounter_ID == "" && CurrentTransaction.transferredFromService_ID == "") {
         t_IsTransferBackAllowedForCounter = false;
     }
-    if (CurrentTransaction.transferredByCounter_ID != "" && CurrentTransaction.transferredFromService_ID != "") {
+    if (CurrentTransaction.transferByCounter_ID != "" && CurrentTransaction.transferredFromService_ID != "") {
         //If these two was filled that means that the service should be allocated on the counter to allow the return
         let allocatedCounters = getAllocatedServingCounters(branchID, CurrentTransaction.transferredFromService_ID)
-        if (allocatedCounters && allocatedCounters.indexOf(CurrentTransaction.transferredByCounter_ID) >= 0) {
+        if (allocatedCounters && allocatedCounters.indexOf(CurrentTransaction.transferByCounter_ID) >= 0) {
             t_IsTransferBackAllowedForCounter = true;
         }
     }
@@ -795,17 +934,17 @@ function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransact
     }
 
     //Check if the user has the service and he is logged in a counter
-    if (CurrentTransaction.transferredByUser_ID == "" && CurrentTransaction.transferredFromService_ID == "") {
+    if (CurrentTransaction.transferByUser_ID == "" && CurrentTransaction.transferredFromService_ID == "") {
         t_IsTransferBackAllowedForUser = false;
     }
-    if (CurrentTransaction.transferredByUser_ID != "" && CurrentTransaction.transferredFromService_ID != "") {
+    if (CurrentTransaction.transferByUser_ID != "" && CurrentTransaction.transferredFromService_ID != "") {
         //Get the counter that the user is on
-        let State = CurrentActivity.type;
+        let State = CurrentActivity.activityType;
         let InvalidStates = [enums.UserActiontypes.InsideCalenderLoggedOff, enums.UserActiontypes.OutsideCalenderLoggedOff]
         //If these two was filled that means that the service should be allocated on the counter to allow the return
         let allocatedUsers = getAllocatedServingUsers(branchID, CurrentTransaction.transferredFromService_ID)
 
-        if (InvalidStates.indexOf(State) < 0 && allocatedUsers.indexOf(CurrentTransaction.transferredByUser_ID) >= 0) {
+        if (InvalidStates.indexOf(State) < 0 && allocatedUsers.indexOf(CurrentTransaction.transferByUser_ID) >= 0) {
             t_IsTransferBackAllowedForUser = true;
         }
     }
@@ -829,7 +968,7 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
             return;
         }
         //Check if the ticket was transferred
-        if (!CurrentTransaction || !CurrentTransaction.transferredByCounter_ID || !CurrentTransaction.transferredFromService_ID) {
+        if (!CurrentTransaction || !CurrentTransaction.transferByCounter_ID || !CurrentTransaction.transferredFromService_ID) {
             return false;
         }
         let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
@@ -894,7 +1033,7 @@ function getAllocatedServices(OrgID, BranchID, CounterID, UserID, output) {
             return common.error;
         }
         let AllocationType = configurationService.getCommonSettings(BranchID, constants.ServiceAllocationTypeKey);
-        let AllocatedQueues = getAllocatedEntitiesOnEntity(BranchConfig, CounterID, UserID, AllocationType)
+        let AllocatedQueues = getAllocatedServicesOnEntity(BranchConfig, CounterID, UserID, AllocationType)
         if (AllocatedQueues && AllocatedQueues.length > 0) {
             AllocatedQueues.forEach(function (ServiceAllocation) {
                 output.push(ServiceAllocation);
@@ -907,14 +1046,18 @@ function getAllocatedServices(OrgID, BranchID, CounterID, UserID, output) {
         return common.error;
     }
 }
-
-
+module.exports.getDisabledServiceDueToMaxServingLimit = getDisabledServiceDueToMaxServingLimit;
+module.exports.setServingProperitiesOnTransaction = setServingProperitiesOnTransaction
+module.exports.getAllocatedEntitiesOnService = getAllocatedEntitiesOnService;
+module.exports.getAllocatedServicesOnEntity = getAllocatedServicesOnEntity;
+module.exports.isSegmentAllocated = isSegmentAllocated;
 module.exports.getAllocatedSegments = getAllocatedSegments;
 module.exports.getAllocatedServices = getAllocatedServices;
 module.exports.PrepareTransferCountersList = PrepareTransferCountersList;
 module.exports.PrepareAddList = PrepareAddList;
 module.exports.PrepareTransferServicesList = PrepareTransferServicesList;
 module.exports.IsTransferBackAllowed = IsTransferBackAllowed;
+module.exports.getAllocatedEntitiesOnSegment = getAllocatedEntitiesOnSegment;
 module.exports.getAllocatedCountersOnSegment = getAllocatedCountersOnSegment;
 module.exports.getAllocatedUsersOnSegment = getAllocatedUsersOnSegment;
 module.exports.getAllocatedCountersOnService = getAllocatedCountersOnService;

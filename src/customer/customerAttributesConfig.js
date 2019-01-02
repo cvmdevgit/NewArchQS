@@ -1,7 +1,7 @@
 class customerAttributesConfig {
     constructor() {
         this.id;
-        this.org_ID;
+        this.orgID;
         this.type_LV;
         this.key_L1;
         this.key_L2;

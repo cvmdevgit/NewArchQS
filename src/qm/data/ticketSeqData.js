@@ -1,7 +1,7 @@
 class ticketSeqData {
     constructor() {
     this.hall_ID;
-    this.symbol;           
+    this.ticketSymbol;           
     this.sequence; 
     this.time;   
     }

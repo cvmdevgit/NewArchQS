@@ -37,7 +37,7 @@ function filterArray(ArrayOfEntities, BranchID) {
 
 function find(ArrayOfEntities, EntityID) {
     let Entity;
-    if (isArrayValid(ArrayOfEntities)) {
+    if (isArrayValid(ArrayOfEntities) && EntityID) {
         Entity = ArrayOfEntities.find(function (value) {
             return value.ID.toString() == EntityID.toString();
         });
@@ -76,8 +76,7 @@ var populateEntities = async function () {
                 configsCache.branches[i].settings = filterCommonConfigs(configsCache.commonConfigs, BranchID, BranchConfigID);
             }
         }
-        fs.writeFileSync("Configs.json", JSON.stringify(configsCache));
-        fs.writeFileSync("settings.json", JSON.stringify(common.settings));
+        //fs.writeFileSync("Configs.json", JSON.stringify(configsCache));
         return common.success;
     }
     catch (error) {
@@ -338,6 +337,11 @@ function ReadCounters(apiMessagePayLoad, Cache) {
 }
 
 function ReadServices(apiMessagePayLoad, Cache) {
+    let branch = getBranchConfig(apiMessagePayLoad.BranchID);
+    if (!branch)
+    {
+        return common.error;   
+    }
     let servicesAllocations = Cache.branch_serviceAllocations.filter(function (value) {
         return value.QueueBranch_ID == apiMessagePayLoad.BranchID;
     });
@@ -483,12 +487,13 @@ var getServiceConfig = function (ServiceConfigID) {
 
 var getServiceConfigFromService = function (ServiceID) {
     try {
+        let serviceConfig;
         //Get min service time
         let service = this.getService(ServiceID);
-
-        //Get min service time
-        let serviceConfig = this.getServiceConfig(service.ServiceConfig_ID);
-
+        if (service) {
+            //Get min service time
+            serviceConfig = this.getServiceConfig(service.ServiceConfig_ID);
+        }
         return serviceConfig;
     }
     catch (error) {

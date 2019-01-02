@@ -1,7 +1,9 @@
 //Contains and maintain configrations
+"use strict";
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var commonMethods = require("../../common/commonMethods");
 var branchData = require("./branchData");
 var organizationData = require("./organizationData");
 var visitData = require("./visitData");
@@ -10,8 +12,10 @@ var transaction = require("./transaction");
 var userActivity = require("./userActivity");
 var configurationService = require("../configurations/configurationService");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
+var workFlowManager = require("../logic/workFlowManager");
 var organizationsData = [];
 var initialize = false;
+var fs = require("fs");
 
 function getCounterData(BracnhData, CounterID) {
     try {
@@ -44,7 +48,7 @@ function getCounterData(BracnhData, CounterID) {
 function getCurrentActivity(BracnhData, CounterData) {
     try {
         let CurrentActivity;
-        if (CounterData && CounterData.currentState) {
+        if (BracnhData && CounterData && CounterData.currentState) {
             CurrentActivity = BracnhData.userActivitiesData.find(function (value) {
                 return CounterData.currentState.id == value.id;
             });
@@ -60,9 +64,9 @@ function getCurrentActivity(BracnhData, CounterData) {
 function getCurrentTransaction(BracnhData, CounterData) {
     try {
         let CurrentTransaction;
-        if (CounterData && CounterData.currentTransaction_ID) {
+        if (BracnhData && CounterData && CounterData.currentTransaction) {
             CurrentTransaction = BracnhData.transactionsData.find(function (value) {
-                return CounterData.currentTransaction_ID == value.id;
+                return CounterData.currentTransaction.id == value.id;
             });
         }
         return CurrentTransaction;
@@ -74,15 +78,19 @@ function getCurrentTransaction(BracnhData, CounterData) {
 }
 
 
-async function getTodaysUserActivitiesFromDB(branchID) {
+async function getALLUserActivitiesFromDB(userActivities) {
     try {
-        let Now = new Date;
-        let Today = Now.setHours(0, 0, 0, 0);
-        let userActivities = await repositoriesManager.entitiesRepo.getFilterBy(new userActivity(), ["branch_ID", "closed"], [branchID, "0"]);
-        userActivities = userActivities.filter(function (value) {
-            return value.startTime > Today && value.closed == 0;
-        });
-        return userActivities;
+
+        let DB_userActivities = [];
+        let result = await repositoriesManager.entitiesRepo.getAll(new userActivity(), DB_userActivities);
+        if (result == common.success) {
+            //Make sure to convert to entity
+            DB_userActivities.forEach(function (DBUserActivity) {
+                userActivities.push(new userActivity(DBUserActivity));
+            });
+
+        }
+        return result;
     }
     catch (error) {
         logger.logError(error);
@@ -90,15 +98,30 @@ async function getTodaysUserActivitiesFromDB(branchID) {
     }
 }
 
-async function cacheBranchUserActivities(branch) {
-    try {
-        //Get user activities
-        let DBuserActivities = await getTodaysUserActivitiesFromDB(branch.id);
 
-        if (DBuserActivities) {
+function isValidUserActivity(activity, branch) {
+    try {
+        let Today = commonMethods.Today();
+        return activity.queueBranch_ID == branch.id && activity.startTime > Today && activity.closed == 0;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+}
+
+async function cacheBranchUserActivities(AllUserActivities, branch) {
+    try {
+
+        //Get user activities
+        let userActivities = AllUserActivities.filter(function (activity) {
+            return isValidUserActivity(activity, branch);
+        });
+
+        if (userActivities) {
             //Convert it to javascript entity
-            for (let i = 0; i < DBuserActivities.length; i++) {
-                let t_userActivity = new userActivity(DBuserActivities[i]);
+            for (let i = 0; i < userActivities.length; i++) {
+                let t_userActivity = userActivities[i];
                 branch.userActivitiesData.push(t_userActivity);
             }
             //Set the user activities on the counter data
@@ -124,42 +147,18 @@ async function cacheBranchUserActivities(branch) {
     }
 }
 
-async function getTodaysTransactionFromDB(branchID) {
-    try {
-        let Now = new Date;
-        let Today = Now.setHours(0, 0, 0, 0);
-        let transactionsData = [];
-        //Get only the transactions for the day
-        let States = [enums.StateType.Pending, enums.StateType.PendingRecall, enums.StateType.Serving, enums.StateType.OnHold];
-        let transactionsDBData = await repositoriesManager.entitiesRepo.getFilterBy(new transaction(), ["branch_ID", "state"], [branchID, States]);
-        transactionsDBData = transactionsDBData.filter(function (value) {
-            return value.creationTime > Today;
-        });
-        if (transactionsDBData && transactionsDBData.length > 0) {
-            for (let i = 0; i < transactionsDBData.length; i++) {
-                let t_transaction = new transaction(transactionsDBData[i]);
-                transactionsData.push(t_transaction);
-            }
-        }
-        return transactionsData;
-    }
-    catch (error) {
-        logger.logError(error);
-        return undefined;
-    }
-}
 
 function AddorUpdateVisitData(branchData, transaction) {
     try {
         let VisitData;
         if (branchData.visitData) {
             VisitData = branchData.visitData.find(function (value) {
-                return transaction.visit_ID == value.visit_ID;
+                return transaction.queueBranchVisitID == value.queueBranchVisitID;
             });
         }
         if (!VisitData) {
             VisitData = new visitData();
-            VisitData.visit_ID = transaction.visit_ID;
+            VisitData.queueBranchVisitID = transaction.queueBranchVisitID;
             VisitData.customer_ID = transaction.customer_ID;
             VisitData.transactions_IDs.push(transaction.id);
             branchData.visitData.push(VisitData);
@@ -167,9 +166,11 @@ function AddorUpdateVisitData(branchData, transaction) {
         } else {
             VisitData.transactions_IDs.push(transaction.id);
         }
+        return common.success;
     }
     catch (error) {
         logger.logError(error);
+        return common.error;
     }
 }
 
@@ -179,13 +180,11 @@ function SetCounterDataUsingTransaction(branch, transaction) {
         if (transaction.counter_ID > 0) {
             let CurrentCounterData = getCounterData(branch, transaction.counter_ID)
             if (CurrentCounterData) {
-                CurrentCounterData.currentTransaction_ID = transaction.id;
                 CurrentCounterData.currentTransaction = transaction;
             }
             else {
                 CurrentCounterData = new counterData();
                 CurrentCounterData.id = transaction.counter_ID;
-                CurrentCounterData.currentTransaction_ID = transaction.id;
                 CurrentCounterData.currentTransaction = transaction;
                 branch.countersData.push(CurrentCounterData);
             }
@@ -196,9 +195,46 @@ function SetCounterDataUsingTransaction(branch, transaction) {
     }
 }
 
-async function cacheBranchTransactions(branch) {
+async function getAllTransactionFromDB(transactionsData) {
     try {
-        branch.transactionsData = await getTodaysTransactionFromDB(branch.id);
+
+        //Get only the transactions for the day
+        let transactionsDBData = [];
+        let result = await repositoriesManager.entitiesRepo.getAll(new transaction(), transactionsDBData);
+        if (result == common.success) {
+            if (transactionsDBData && transactionsDBData.length > 0) {
+                for (let i = 0; i < transactionsDBData.length; i++) {
+                    let t_transaction = new transaction(transactionsDBData[i]);
+                    workFlowManager.setServingProperitiesOnTransaction(t_transaction);
+                    transactionsData.push(t_transaction);
+                }
+            }
+        }
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return undefined;
+    }
+}
+
+function isValidBranchTransactions(transaction, branch) {
+    try {
+        let Today = commonMethods.Today();
+        return transaction.queueBranch_ID == branch.id && transaction.creationTime > Today && transaction.state != enums.StateType.closed;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+}
+
+
+async function cacheBranchTransactions(AllTransactions, branch) {
+    try {
+        branch.transactionsData = AllTransactions.filter(function (transaction) {
+            return isValidBranchTransactions(transaction, branch);
+        });
         if (branch.transactionsData) {
             for (let i = 0; i < branch.transactionsData.length; i++) {
                 let transaction = branch.transactionsData[i];
@@ -240,18 +276,27 @@ function getOrgData(OrgID) {
 //Cache Server Configs from DB
 var cacheData = async function () {
     try {
-        let result = common.success;
+        while (organizationsData.length > 0) {
+            organizationsData.pop();
+        }
+        let result = common.error;
+        let AllUserActivities = [];
+        let AllTransactions = [];
         let BranchesConfig = configurationService.configsCache.branches;
         if (BranchesConfig != null && BranchesConfig.length > 0) {
-            for (let i = 0; i < BranchesConfig.length; i++) {
-                let BranchConf = BranchesConfig[i];
-                let OrgData = getOrgData(BranchConf.OrgID);
-                OrgData = CreateOrUpdateOrgCache(BranchConf.OrgID, OrgData);
-                let branch = new branchData();
-                branch.id = BranchConf.ID;
-                await cacheBranchUserActivities(branch);
-                await cacheBranchTransactions(branch);
-                OrgData.branchesData.push(branch);
+            result = await getALLUserActivitiesFromDB(AllUserActivities);
+            result = (result == common.success) ? await getAllTransactionFromDB(AllTransactions) : result;
+            if (result == common.success) {
+                for (let i = 0; i < BranchesConfig.length; i++) {
+                    let BranchConf = BranchesConfig[i];
+                    let OrgData = getOrgData(BranchConf.OrgID);
+                    OrgData = CreateOrUpdateOrgCache(BranchConf.OrgID, OrgData);
+                    let branch = new branchData();
+                    branch.id = BranchConf.ID;
+                    await cacheBranchUserActivities(AllUserActivities, branch);
+                    await cacheBranchTransactions(AllTransactions, branch);
+                    OrgData.branchesData.push(branch);
+                }
             }
         }
         return result;
@@ -263,9 +308,8 @@ var cacheData = async function () {
 };
 function getBranchData(OrgID, BranchID) {
     let OrgData = getOrgData(OrgID);
-    let branchData ;
-    if (OrgData && OrgData.branchesData)
-    {
+    let branchData;
+    if (OrgData && OrgData.branchesData) {
         branchData = OrgData.branchesData.find(function (value) {
             return value.id == BranchID;
         });
@@ -282,8 +326,12 @@ function getHeldCustomers(OrgID, BranchID, CounterID, output) {
 
         //Get Branch Data
         BracnhData = getBranchData(OrgID, BranchID);
+        if (!BracnhData) {
+            return common.error;
+        }
+
         let heldTransactions = BracnhData.transactionsData.filter(function (transaction) {
-            return transaction.state == enums.StateType.OnHold && transaction.heldByCounter_ID == CounterID;;
+            return transaction.state == enums.StateType.OnHold && transaction.heldByCounter_ID == CounterID;
         });
 
         if (heldTransactions && heldTransactions.length) {
@@ -299,19 +347,107 @@ function getHeldCustomers(OrgID, BranchID, CounterID, output) {
     }
 }
 
+function isCustomerWaitingOnCounter(CounterID, AllocatedSegment, AllocatedService, transaction) {
+    try {
+        if (transaction.state == enums.StateType.OnHold && transaction.heldByCounter_ID == CounterID) {
+            return true;
+        }
+
+        let counter = configurationService.getCounterConfig(CounterID);
+        if (!counter || counter.Hall_ID.toString() != transaction.hall_ID.toString()) {
+            return false;
+        }
+        let waitingStates = [enums.StateType.Pending, enums.StateType.PendingRecall];
+        if (waitingStates.indexOf(parseInt(transaction.state)) > -1 && AllocatedService.indexOf(parseInt(transaction.service_ID)) > -1 && AllocatedSegment.indexOf(parseInt(transaction.segment_ID)) > -1) {
+            if (transaction.counter_ID == null || transaction.counter_ID == CounterID) {
+                return true;
+            }
+        }
+        return false;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+
+}
+
+//check if the custom is waiting 
+function isCustomerWaiting(CounterID, AllocatedSegment, AllocatedService, transaction) {
+    try {
+        if (CounterID && CounterID != "") {
+            //FOR CES
+            return isCustomerWaitingOnCounter(CounterID, AllocatedSegment, AllocatedService, transaction);
+        }
+        else {
+            //For BMS
+            let waitingStates = [enums.StateType.OnHold, enums.StateType.Pending, enums.StateType.PendingRecall];
+            if (waitingStates.indexOf(parseInt(transaction.state)) > -1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    catch (error) {
+        logger.logError(error);
+        return false;
+    }
+}
+
+//Get waiting and hold customers
+function getWaitingCustomers(OrgID, BranchID, CounterID, UserID, output) {
+    try {
+        let result = common.success;
+        let BracnhData;
+
+        //Get Branch Data
+        BracnhData = getBranchData(OrgID, BranchID);
+        if (!BracnhData) {
+            return common.error;
+        }
+        let AllocatedSegment = [];
+        let AllocatedService = [];
+        let CounterData = getCounterData(BracnhData, CounterID);
+        //getAllocated entities
+        if (CounterData) {
+            workFlowManager.getAllocatedSegments(OrgID, BranchID, CounterID, UserID, AllocatedSegment)
+            workFlowManager.getAllocatedServices(OrgID, BranchID, CounterID, UserID, AllocatedService)
+        }
+        else {
+            return common.error;
+        }
+
+        let WaitingTransactions = BracnhData.transactionsData.filter(function (transaction) {
+            return isCustomerWaiting(CounterID, AllocatedSegment, AllocatedService, transaction);
+        });
+
+        if (WaitingTransactions && WaitingTransactions.length) {
+            WaitingTransactions.forEach(function (transaction) {
+                output.push(transaction);
+            });
+        }
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
 
 
 //Get Branches Data
 function getBranchCountersData(OrgID, BranchID, output) {
     try {
         //Get Branch Data
-        BracnhData = getBranchData(OrgID, BranchID);
-        if (BracnhData.countersData) {
+        let BracnhData = getBranchData(OrgID, BranchID);
+        if (BracnhData && BracnhData.countersData) {
             BracnhData.countersData.forEach(function (counterData) {
                 output.push(counterData);
-            })
+            });
+            return common.success;
         }
-        return common.success;
+        return common.error;
     }
     catch (error) {
         logger.logError(error);
@@ -342,10 +478,12 @@ function getCurrentData(OrgID, BranchID, CounterID, output) {
         output.push(CounterData);
         output.push(CurrentActivity);
         output.push(CurrentTransaction);
+
+        return common.success;
     }
     catch (error) {
         logger.logError(error);
-        return undefined;
+        return common.error;
     }
 }
 
@@ -354,6 +492,7 @@ var initialize = async function () {
         let result = await repositoriesManager.initialize();
         if (result == common.success) {
             result = await cacheData();
+            fs.writeFileSync("Data.json", JSON.stringify(this.organizationsData));
             initialize = true;
         }
         return result;
@@ -418,6 +557,7 @@ module.exports.getCurrentActivity = getCurrentActivity;
 module.exports.getCurrentTransaction = getCurrentTransaction;
 module.exports.getBranchData = getBranchData;
 module.exports.getHeldCustomers = getHeldCustomers;
+module.exports.getWaitingCustomers = getWaitingCustomers;
 module.exports.getCounterData = getCounterData;
 module.exports.AddorUpdateVisitData = AddorUpdateVisitData;
 module.exports.getCurrentData = getCurrentData;

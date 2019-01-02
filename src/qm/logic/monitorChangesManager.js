@@ -90,7 +90,7 @@ function broadcastChangedCountersAndTransactions(OrgID, BranchID) {
         message.payload.countersInfo = countersInfo;
         message.payload.transactionsInfo = transactionsInfo;
         message.payload.statisticsInfo = statisticsInfo;
-        events.broadcastMessage.emit('event', broadcastTopic, message);
+        events.broadcastMessage.emit('broadcast', broadcastTopic, message);
         return common.success;
     }
     catch (error) {

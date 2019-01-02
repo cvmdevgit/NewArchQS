@@ -202,6 +202,19 @@ function getHeldCustomers(counterInfo) {
     counterInfo.result = result;
     return result;
 };
+function getWaitingCustomers(counterInfo) {
+    let result = common.success;
+    let errors = [];
+    let output = [];
+    let OrgID = counterInfo["orgid"];
+    let BranchID = counterInfo["branchid"];
+    let CounterID = counterInfo["counterid"];
+    let UserID = counterInfo["userid"];
+    result = dataService.getWaitingCustomers(OrgID, BranchID, CounterID, UserID, output);
+    counterInfo.HeldCustomers = output;
+    counterInfo.result = result;
+    return result;
+};
 
 function ReadBranchStatistics(apiMessagePayload) {
     return statisticsManager.ReadBranchStatistics(apiMessagePayload);
@@ -218,6 +231,9 @@ var getData = function (message) {
                     break;
                 case enums.commands.GetHeldCustomers:
                     result = getHeldCustomers(message.payload);
+                    break;
+                case enums.commands.GetWaitingCustomers:
+                    result = getWaitingCustomers(message.payload);
                     break;
                 case enums.commands.ReadBranchStatistics:
                     result = ReadBranchStatistics(message.payload);

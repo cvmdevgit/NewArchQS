@@ -98,7 +98,7 @@ function callGetEntitiesAPI(OrgID, Entity1, Entity2, filters, Data) {
                     }
                     const tRecData = JSON.parse(body);
                     // Save Data To Local Storage
-                    if (tRecData.Result === common.success) {
+                    if (tRecData.Result !== common.error) {
                         let returnedData = JSON.parse(tRecData.ResponseString);
                         Data.push(returnedData);
                         resolve(common.success);

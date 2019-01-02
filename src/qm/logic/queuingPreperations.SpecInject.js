@@ -36,7 +36,7 @@ function setCurrentCounterState(orgID, branchID, counterID, UserActiontype) {
     dataService.getCurrentData(orgID, branchID, counterID, output);
     CounterData = output[1];
     CurrentActivity = output[2];
-    CurrentActivity.type = UserActiontype;
+    CurrentActivity.activityType = UserActiontype;
 }
 
 function changeCounterType(orgID, branchID, counterID, counterType) {
@@ -64,7 +64,6 @@ function removeTransaction(orgID, branchID, counterID) {
     CounterData = output[1];
     CurrentActivity = output[2];
     CurrentTransaction = output[3];
-    CounterData.currentTransaction_ID = undefined;
     CounterData.currentTransaction = undefined;
 }
 

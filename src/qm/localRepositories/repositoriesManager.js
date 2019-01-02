@@ -1,19 +1,10 @@
 "use strict";
 var common = require("../../common/common");
 var logger = require("../../common/logger");
-var entitiesRepoForSQLlite = require("./entitiesRepoForSQLlite");
 var entitiesRepoForSQL = require("./entityRepoForSQL");
 var entitiesRepo;
-var idGenerator = require("./idGenerator");
 var initialized = false;
-if (common.settings.dbType == "sql") {
-    //Initialize Repos
-    entitiesRepo = new entitiesRepoForSQL();
-}
-else {
-    //Initialize Repos
-    entitiesRepo = new entitiesRepoForSQLlite();
-}
+entitiesRepo = new entitiesRepoForSQL();
 
 //Initialize DB connection
 //Initialize Repositories with the DB connection
@@ -24,23 +15,23 @@ var initialize = async function () {
         if (initialized) {
             return common.success;
         }
-
-
-
         result = await entitiesRepo.initialize();
-        await idGenerator.initialize(entitiesRepo.db);
-        initialized = true;
-        return common.success;
+        if (result == common.success)
+        {
+            initialized = true; 
+        }
+        return result;
     }
     catch (error) {
         logger.logError(error);
         return common.error;
     }
 };
-var commit = async function () {
+
+var commit = async function (RequestID) {
     try {
-        await entitiesRepo.commit();
-        return common.success;
+        let result = await entitiesRepo.commit(RequestID);
+        return result;
     }
     catch (error) {
         logger.logError(error);
@@ -50,7 +41,7 @@ var commit = async function () {
 var stop = async function () {
     try {
         if (entitiesRepo) {
-            await entitiesRepo.close();
+            await entitiesRepo.stop();
         }
         initialized = false;
         return common.success;

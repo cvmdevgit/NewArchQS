@@ -1,7 +1,7 @@
 "use strict";
 delete require.cache[require.resolve("./statisticsManager")];
 delete require.cache[require.resolve("./queueCommandManager")];
-
+var statisticsManagerSpecInject = require("./statisticsManager.specInject");
 var statisticsManager = require("./statisticsManager");
 var statisticsData = require("../data/statisticsData");
 var queueCommandManager = require("./queueCommandManager");
@@ -14,12 +14,16 @@ const BranchID = "106";
 const Invalid_BranchID = "123123123";
 const SegmentID = "325";
 const ServiceID = "364";
+const ServiceID2 = "113";
 const CounterID = "120";
 const CounterHallID = "838";
 const Invalid_CounterHallID = "123123123123";
 const UserID = "2";
 should.toString();
 
+beforeEach(async function () {
+    statisticsManagerSpecInject.initialize();
+});
 
 describe('StatisticsManager initialize successfully', async function () {
     it('StatisticsManager', async function () {
@@ -29,27 +33,29 @@ describe('StatisticsManager initialize successfully', async function () {
         (result === common.success).should.true();
     });
     it('Read Branch(' + BranchID + ') statistics successfully', async function () {
-        let branchID = BranchID;
-        let result = await statisticsManager.ReadBranchStatistics(branchID);
+        let payload = {
+            branchid: BranchID
+        };
+        let result = await statisticsManager.ReadBranchStatistics(payload);
         (result === common.success).should.true();
     });
-    it('Read Branch(106) Statistic for service ' + ServiceID + ' successfully', async function () {
+    it('Read Branch(106) Statistic for service ' + ServiceID2 + ' successfully', async function () {
         let FilterStatistics = new statisticsData();
-        FilterStatistics.branch_ID = BranchID;
-        FilterStatistics.service_ID = ServiceID;
+        FilterStatistics.queueBranch_ID = BranchID;
+        FilterStatistics.service_ID = ServiceID2;
         let result = await statisticsManager.GetSpecificStatistics(FilterStatistics);
         (result && result.WaitingCustomers > 0).should.true();
     });
-    it('Read Branch(106) Statistic for Counter =  ' + CounterID + ' successfully (No waiting Customer Specific to the counter)', async function () {
+    it('Read Branch(106) Statistic for Counter =  ' + CounterID + ' successfully (waiting Customer Specific to the counter)', async function () {
         let FilterStatistics = new statisticsData();
-        FilterStatistics.branch_ID = BranchID;
+        FilterStatistics.queueBranch_ID = BranchID;
         FilterStatistics.counter_ID = CounterID;
         let result = await statisticsManager.GetSpecificStatistics(FilterStatistics);
-        (result && result.NoShowCustomersNo == 0).should.true();
+        (result && result.WaitingCustomers > 0).should.true();
     });
     it('Read specific statistics for a valid branch but invalid service and segment will succeed with zero values', async function () {
         let FilterStatistics = new statisticsData();
-        FilterStatistics.branch_ID = BranchID;
+        FilterStatistics.queueBranch_ID = BranchID;
         FilterStatistics.segment_ID = 22222222222222222;
         FilterStatistics.service_ID = 222222222222222222;
         let result = await statisticsManager.GetSpecificStatistics(FilterStatistics);

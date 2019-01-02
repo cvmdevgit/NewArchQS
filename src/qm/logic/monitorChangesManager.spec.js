@@ -31,7 +31,7 @@ var Output = undefined;
 function Handler(broadcastTopic, request) {
     Output = request;
 }
-events.broadcastMessage.on('event', Handler);
+events.broadcastMessage.on('broadcast', Handler);
 
 sinon.stub(monitorChangesManager.repositoriesManager, 'getModifiedEntities').callsFake(function () {
     try {
@@ -169,7 +169,7 @@ describe('Monitor changes Tests', async function () {
     it('Monitor changes: When there 1 userActivity available valid counter', function (done) {
         entities = [];
         let tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
 
@@ -189,15 +189,15 @@ describe('Monitor changes Tests', async function () {
     it('Monitor changes: When there 3 userActivity available with same counter ID it should return sinlge counter', function (done) {
         entities = [];
         let tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
         tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
         tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
 
@@ -217,15 +217,15 @@ describe('Monitor changes Tests', async function () {
     it('Monitor changes: When there 3 userActivity available with 2 counter IDs it should return 2 counters', function (done) {
         entities = [];
         let tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
         tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
         tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID2;
         entities.push(tuserActivity);
         //Broadcast changes
@@ -245,15 +245,15 @@ describe('Monitor changes Tests', async function () {
     it('Monitor changes: When there are 3 transactions, 5 statistics and 3 userActivity available with 2 counter IDs', function (done) {
         entities = [];
         let tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
         tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID;
         entities.push(tuserActivity);
         tuserActivity = new userActivity();
-        tuserActivity.branch_ID = BranchID;
+        tuserActivity.queueBranch_ID = BranchID;
         tuserActivity.counter_ID = CounterID2;
         entities.push(tuserActivity);
         entities.push(new transaction());

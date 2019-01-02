@@ -1,7 +1,7 @@
 class customer {
     constructor() {
         this.id;
-        this.org_ID;
+        this.orgID;
         this.customer_ID ;
         this.customerIDType ;
         this.contactNumber ;
