@@ -21,7 +21,7 @@ var broadcastTopic = "queuing.broadcast";
 var ModuleName = "Queuing";
 var ServiceStatus = new serviceStatus();
 
-var FinishingCommand = async function (RequestID, OrgID, BranchID) {
+async function FinishingCommand(RequestID, OrgID, BranchID) {
     try {
         let result = common.error;
         //Commit DB Actions
@@ -40,7 +40,7 @@ var FinishingCommand = async function (RequestID, OrgID, BranchID) {
 
 //only functions and reference of branch data and configuration service.
 //Issue Ticket 
-var issueTicket = async function (message) {
+async function issueTicket(message) {
     try {
         let result;
         let errors = [];
@@ -58,7 +58,7 @@ var issueTicket = async function (message) {
         transactioninst.service_ID = ServiceID;
         transactioninst.segment_ID = SegmentID;
 
-        result = transactionManager.issueSingleTicket(errors,RequestID, transactioninst);
+        result = transactionManager.issueSingleTicket(errors, RequestID, transactioninst);
         //commit DB and Broadcast changes
         result = (result == common.success) ? await FinishingCommand(RequestID, OrgID, BranchID) : result;
         //Perpare the response
@@ -72,13 +72,11 @@ var issueTicket = async function (message) {
 };
 
 //Issue Ticket with multiple services
-var issueTicketMulti = function (ticketInfo) {
+function issueTicketMulti(ticketInfo) {
     return true;
 };
 
-
-
-var addService = async function (message) {
+async function addService(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -115,7 +113,7 @@ var addService = async function (message) {
 };
 
 //break customer from counter
-var counterBreak = async function (message) {
+async function counterBreak(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -144,7 +142,7 @@ var counterBreak = async function (message) {
         return common.error;
     }
 };
-var counterServeCustomer = async function (message) {
+async function counterServeCustomer(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -178,7 +176,7 @@ var counterServeCustomer = async function (message) {
     }
 }
 
-var counterHoldCustomer = async function (message) {
+async function counterHoldCustomer(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -213,7 +211,7 @@ var counterHoldCustomer = async function (message) {
 }
 
 //Take break on counter
-var counterNext = async function (message) {
+async function counterNext(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -247,7 +245,7 @@ var counterNext = async function (message) {
 };
 
 //Open counter without calling customer
-var counterOpen = async function (message) {
+async function counterOpen(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -275,7 +273,7 @@ var counterOpen = async function (message) {
 };
 
 //User Login
-var userLogin = function (message) {
+function userLogin(message) {
     try {
         let result = common.error;
         let requestPayload = dataPayloadManager.getQSRequestObject(message.payload);
@@ -299,7 +297,7 @@ var userLogin = function (message) {
 };
 
 //Transfer ticket to counter
-var counterTransferToCounter = async function (message) {
+async function counterTransferToCounter(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -335,7 +333,7 @@ var counterTransferToCounter = async function (message) {
 
 
 //Transfer ticket to another service
-var counterTransferToService = async function (message) {
+async function counterTransferToService(message) {
     try {
         let result = common.error;
         let errors = [];
@@ -390,8 +388,6 @@ var counterTransferWaitingCustomer = function (TransferInfo) {
     return true;
 };
 
-
-
 //Update Customer Note
 var saveCustomerNote = function (customerInfo) {
     return true;
@@ -439,13 +435,47 @@ var getServiceStatus = async function (message) {
     return common.success;
 };
 
+async function dispatchCommand(message) {
+    try {
+        let result = common.error;
+        let command = message.topicName.replace(ModuleName + "/", "");
+        switch (command) {
+            case enums.commands.IssueTicket:
+                result = await issueTicket(message); break;
+            case enums.commands.Next:
+                result = await counterNext(message); break;
+            case enums.commands.Hold:
+                result = await counterHoldCustomer(message); break;
+            case enums.commands.ServeCustomer:
+                result = await counterServeCustomer(message); break;
+            case enums.commands.Break:
+                result = await counterBreak(message); break;
+            case enums.commands.Open:
+                result = await counterOpen(message); break;
+            case enums.commands.AddService:
+                result = await addService(message); break;
+            case enums.commands.Login:
+                result = await userLogin(message); break;
+            case enums.commands.TransferToCounter:
+                result = await counterTransferToCounter(message); break;
+            case enums.commands.TransferToService:
+                result = await counterTransferToService(message); break;
+        }
+        return result;
+    }
+    catch (error) {
+        logger.logError(error);
+        return common.error;
+    }
+}
+
 //Deassign Counter from BMS
-var processCommand = async function (message) {
+async function processCommand(message) {
     try {
         let result = common.error;
         if (message) {
             //Remove Module Name to get the command name
-            var command = message.topicName.replace(ModuleName + "/", "");
+            let command = message.topicName.replace(ModuleName + "/", "");
             //If the command was status request the return it
             if (command == enums.commands.getServiceStatus) {
                 result = await getServiceStatus(message);
@@ -455,29 +485,9 @@ var processCommand = async function (message) {
             if (ServiceStatus.status != enums.ServiceStatuses.Working) {
                 return result
             }
+
             //the Rest of the commands
-            switch (command) {
-                case enums.commands.IssueTicket:
-                    result = await issueTicket(message); break;
-                case enums.commands.Next:
-                    result = await counterNext(message); break;
-                case enums.commands.Hold:
-                    result = await counterHoldCustomer(message); break;
-                case enums.commands.ServeCustomer:
-                    result = await counterServeCustomer(message); break;
-                case enums.commands.Break:
-                    result = await counterBreak(message); break;
-                case enums.commands.Open:
-                    result = await counterOpen(message); break;
-                case enums.commands.AddService:
-                    result = await addService(message); break;
-                case enums.commands.Login:
-                    result = await userLogin(message); break;
-                case enums.commands.TransferToCounter:
-                    result = await counterTransferToCounter(message); break;
-                case enums.commands.TransferToService:
-                    result = await counterTransferToService(message); break;
-            }
+            result = await dispatchCommand(message);
         }
         return result;
     }
@@ -523,7 +533,7 @@ async function PrepareQueuingData() {
     }
 }
 
-var reInitializeQueuingService = async function () {
+async function reInitializeQueuingService() {
     try {
         ServiceStatus.status = enums.ServiceStatuses.Error;
         //Failed to intialize queue command manager
@@ -536,9 +546,8 @@ var reInitializeQueuingService = async function () {
     }
 }
 
-var initializeServices = async function ()
-{
-    try{
+async function initializeServices() {
+    try {
         let result = await configurationService.initialize();
         if (result == common.success) {
             result = await dataService.initialize();
@@ -562,7 +571,7 @@ var initializeServices = async function ()
 }
 
 //Initialize everything
-var initialize = async function () {
+async function initialize() {
     try {
         if (ServiceStatus.status == enums.ServiceStatuses.Working) {
             return common.success;
@@ -580,7 +589,7 @@ var initialize = async function () {
 };
 
 //If a component Report error start to re-initialize and broadcast the status
-var handleServiceStatusChanged = async function (DetailedStatus) {
+async function handleServiceStatusChanged(DetailedStatus) {
     try {
         //Remove the existed status if this is an update
         ServiceStatus.details = ServiceStatus.details.filter(function (t_ServiceStatus) {
@@ -613,7 +622,7 @@ var handleServiceStatusChanged = async function (DetailedStatus) {
 events.serviceStatusChange.on('serviceStatusChange', handleServiceStatusChanged);
 
 //Initialize everything
-var stop = async function () {
+async function stop() {
     try {
         let result = await dataService.stop();
         ServiceStatus.status = enums.ServiceStatuses.Unknown;
