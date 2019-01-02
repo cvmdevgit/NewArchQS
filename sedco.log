@@ -11020,4 +11020,44 @@
     at runCallback (timers.js:694:18)
     at tryOnImmediate (timers.js:665:5)
     at processImmediate (timers.js:647:5)
+14:44:44 02/01/2019
+ReferenceError: entity is not defined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at Object.AddorUpdate (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\userActivitySQLRepo.js:55:16)
+    at AddorUpdateEntity (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:69:39)
+    at entitiesRepo.Add (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:93:29)
+    at c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:174:49
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:44:44 02/01/2019
+ReferenceError: entity is not defined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at Object.AddorUpdate (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\userActivitySQLRepo.js:55:16)
+    at AddorUpdateEntity (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:69:39)
+    at entitiesRepo.Add (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:93:29)
+    at c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:174:49
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:44:44 02/01/2019
+ReferenceError: entity is not defined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at Object.AddorUpdate (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\userActivitySQLRepo.js:55:16)
+    at AddorUpdateEntity (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:69:39)
+    at entitiesRepo.Add (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:93:29)
+    at c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:174:49
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+14:44:44 02/01/2019
+ReferenceError: entity is not defined
+Stack: 
+Error
+    at Object.logError (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\common\logger.js:6:21)
+    at Object.AddorUpdate (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entitiesSQLRepos\userActivitySQLRepo.js:55:16)
+    at AddorUpdateEntity (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:69:39)
+    at entitiesRepo.Add (c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:93:29)
+    at c:\tfsProjects\CVMGit\NewArch\QueuingService\src\qm\localRepositories\entityRepoForSQL.js:174:49
+    at process._tickCallback (internal/process/next_tick.js:68:7)
 

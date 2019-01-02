@@ -13,11 +13,12 @@ function getEntityAttributes(entity) {
     return attributesStr;
 }
 
-var AddorUpdate = async function (db,entity) {
+
+function fillParameters(params, entity) {
     try {
-        let params = [];
-                //Inputs
-                let minimumDate = new Date(0);
+
+        //Inputs
+        let minimumDate = new Date(0);
         //Inputs
         params.push(new procedureParameter('id', entity.id, sql.VarChar(255), false));
         params.push(new procedureParameter('queueBranch_ID', Number(entity.queueBranch_ID), sql.BigInt, false));
@@ -40,8 +41,19 @@ var AddorUpdate = async function (db,entity) {
         //Outputs
         params.push(new procedureParameter('Errors', '', sql.NVarChar(sql.MAX), true));
 
+    }
+    catch (error) {
+        logger.logError(error);
+    }
+}
 
-        let sqlResult = await db.callprocedure(update_Procedure,params);
+var AddorUpdate = async function (db, entity) {
+    try {
+        let params = [];
+
+        fillParameters(params, entity);
+
+        let sqlResult = await db.callprocedure(update_Procedure, params);
         if (sqlResult.result == common.success) {
             return sqlResult;
         }
@@ -67,7 +79,7 @@ var getAll = async function (db) {
         return undefined;
     }
 };
-var remove = async function (db,ID) {
+var remove = async function (db, ID) {
     try {
         let sql = " delete from " + tableName + " where id = \'" + ID + "\'";
         let sqlResult = await db.run(sql);

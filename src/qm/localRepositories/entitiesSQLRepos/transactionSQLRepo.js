@@ -8,10 +8,8 @@ var RepoEntity = new (require("../../data/transaction"));
 var sql = require("mssql");
 
 
-var AddorUpdate = async function (db, entity) {
+function fillParameters(params, entity) {
     try {
-        let params = [];
-
 
         //Inputs
         params.push(new procedureParameter('id', entity.id > 0 ? Number(entity.id) : -1, sql.BigInt, false));
@@ -68,10 +66,22 @@ var AddorUpdate = async function (db, entity) {
         params.push(new procedureParameter('integrationID', entity.integrationID, sql.NVarChar(50), false));
         params.push(new procedureParameter('displayTicketNumber', entity.displayTicketNumber, sql.NVarChar(10), false));
 
+
         //Outputs
         params.push(new procedureParameter('Errors', '', sql.VarChar(sql.MAX), true));
         params.push(new procedureParameter('NewID', entity.id, sql.BigInt, true));
 
+    }
+    catch (error) {
+        logger.logError(error);
+    }
+}
+
+var AddorUpdate = async function (db, entity) {
+    try {
+        //Fill parameters for Procedure call
+        let params = [];
+        fillParameters(params, entity);
 
         let sqlResult = await db.callprocedure(update_Procedure, params);
         if (sqlResult.result == common.success) {
@@ -100,13 +110,13 @@ var getAll = async function (db) {
     }
 };
 
-var remove = async function (db,ID) {
+var remove = async function (db, ID) {
     try {
         if (ID) {
             let params = [];
             params.push(new procedureParameter('ID', ID, sql.BigInt, false));
             let sqlCommand = " delete from " + tableName + " where id = @ID";
-            let sqlResult = await db.run(sqlCommand,params);
+            let sqlResult = await db.run(sqlCommand, params);
             return sqlResult;
 
         }

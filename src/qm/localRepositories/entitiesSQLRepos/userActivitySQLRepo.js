@@ -7,9 +7,10 @@ var tableName = "T_UserQActivitiesLive";
 var RepoEntity = new (require("../../data/userActivity"));
 var sql = require("mssql");
 
-var AddorUpdate = async function (db, p_UserActivity) {
+
+function fillParameters(params, p_UserActivity) {
     try {
-        let params = [];
+
         //Inputs
         let minimumDate = new Date(0);
 
@@ -30,6 +31,17 @@ var AddorUpdate = async function (db, p_UserActivity) {
         params.push(new procedureParameter('Errors', '', sql.NVarChar(sql.MAX), true));
         params.push(new procedureParameter('NewID', p_UserActivity.id, sql.BigInt, true));
 
+    }
+    catch (error) {
+        logger.logError(error);
+    }
+}
+
+var AddorUpdate = async function (db, p_UserActivity) {
+    try {
+        let params = [];
+
+        fillParameters(params, p_UserActivity);
 
         let sqlResult = await db.callprocedure(update_Procedure, params);
         if (sqlResult.result == common.success) {
@@ -59,12 +71,12 @@ var getAll = async function (db) {
     }
 };
 
-var remove = async function (db,ID) {
+var remove = async function (db, ID) {
     try {
         let params = [];
         params.push(new procedureParameter('ID', ID, sql.BigInt, false));
         let sqlCommand = " delete from " + tableName + " where id = @ID";
-        let sqlResult =  await db.run(sqlCommand,params);
+        let sqlResult = await db.run(sqlCommand, params);
         return sqlResult;
     }
     catch (error) {
@@ -76,7 +88,7 @@ var remove = async function (db,ID) {
 var clear = async function (db) {
     try {
         let sql = " delete from " + tableName;
-        let sqlResult =  await db.run(sql);
+        let sqlResult = await db.run(sql);
         return sqlResult;
     }
     catch (error) {
