@@ -2,6 +2,7 @@
 var common = require("../../common/common");
 var logger = require("../../common/logger");
 var enums = require("../../common/enums");
+var listCommonFunctions = require("../../common/listCommonFunctions");
 var events = require("../../common/events");
 var transaction = require("../data/transaction");
 var userActivity = require("../data/userActivity");
@@ -60,7 +61,7 @@ function getChangedEntites(BranchData, countersInfo, transactionsInfo, statistic
         dataService.getChangedCounters(BranchData, countersInfo);
         //Get the changed entities from Repo
         let entities = repositoriesManager.getModifiedEntities()
-        if (entities && entities.length > 0) {
+        if (listCommonFunctions.isArrayValid(entities)) {
             entities.forEach(entity => {
                 HandleModifiedEntity(BranchData, countersInfo, transactionsInfo, statisticsInfo, entity)
             });

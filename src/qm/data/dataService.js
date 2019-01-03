@@ -4,6 +4,8 @@ var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
 var commonMethods = require("../../common/commonMethods");
+var listCommonFunctions = require("../../common/listCommonFunctions");
+
 var branchData = require("./branchData");
 var organizationData = require("./organizationData");
 var visitData = require("./visitData");
@@ -196,7 +198,7 @@ async function getAllTransactionFromDB(transactionsData) {
         let transactionsDBData = [];
         let result = await repositoriesManager.entitiesRepo.getAll(new transaction(), transactionsDBData);
         if (result == common.success) {
-            if (transactionsDBData && transactionsDBData.length > 0) {
+            if (listCommonFunctions.isArrayValid(transactionsDBData)) {
                 for (let i = 0; i < transactionsDBData.length; i++) {
                     let t_transaction = new transaction(transactionsDBData[i]);
                     workFlowManager.setServingProperitiesOnTransaction(t_transaction);
@@ -276,13 +278,13 @@ var cacheData = async function () {
         let result = common.error;
         let AllUserActivities = [];
         let AllTransactions = [];
-        let BranchesConfig = configurationService.configsCache.branches;
-        if (BranchesConfig != null && BranchesConfig.length > 0) {
+        let BranchesConfigs = configurationService.configsCache.branches;
+        if (listCommonFunctions.isArrayValid(BranchesConfigs)) {
             result = await getALLUserActivitiesFromDB(AllUserActivities);
             result = (result == common.success) ? await getAllTransactionFromDB(AllTransactions) : result;
             if (result == common.success) {
-                for (let i = 0; i < BranchesConfig.length; i++) {
-                    let BranchConf = BranchesConfig[i];
+                for (let i = 0; i < BranchesConfigs.length; i++) {
+                    let BranchConf = BranchesConfigs[i];
                     let OrgData = getOrgData(BranchConf.OrgID);
                     OrgData = CreateOrUpdateOrgCache(BranchConf.OrgID, OrgData);
                     let branch = new branchData();

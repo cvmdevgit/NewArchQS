@@ -3,6 +3,7 @@ var mssql = require("mssql");
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var listCommonFunctions = require("../../common/listCommonFunctions");
 var events = require("../../common/events");
 var sqlResult = require("./sqlResult");
 
@@ -28,7 +29,7 @@ const SQL_ERRORS = {
 //exports.db = db;
 function AddParametersToRequest(request, params) {
     try {
-        if (params && params.length > 0) {
+        if (listCommonFunctions.isArrayValid(params)) {
             params.forEach(function (parameter) {
                 request.input(parameter.Name, parameter.DataType, parameter.Value);
             });
@@ -40,7 +41,7 @@ function AddParametersToRequest(request, params) {
 }
 function AddParametersToProcedure(request, procedureParameters) {
     try {
-        if (procedureParameters && procedureParameters.length > 0) {
+        if (listCommonFunctions.isArrayValid(procedureParameters)) {
             procedureParameters.forEach(function (t_procedureParameter) {
                 if (t_procedureParameter.DataType) {
                     if (t_procedureParameter.IsOutput == false) {

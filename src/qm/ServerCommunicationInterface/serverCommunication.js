@@ -3,6 +3,7 @@ var btoa = require('btoa');
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var listCommonFunctions = require("../../common/listCommonFunctions");
 var mSharedDataService = require("./sharedDataService");
 var serverEndPoints = require("./serverEndPoints");
 var request = require('request');
@@ -132,7 +133,7 @@ function callGetBranchesUsersAPI(OrgID, Branch, Data) {
         return new Promise(function (resolve, reject) {
             let tUrl = serverEndPoints.GetBranchesUsersEndPoint.replace(mSharedDataService.AddressToReplace, common.settings.ServerConnectionParameters.ServerURL);
             tUrl = tUrl + "?OrgID=" + OrgID;
-            if (Branch && Branch.length > 0) {
+            if (listCommonFunctions.isArrayValid(Branch)) {
                 tUrl = tUrl + "&Branch=" + Branch;
             }
             let tokenValue = 'TokenAuthenticated' + ' ' + btoa(mSharedDataService.AuthData.Token);

@@ -4,6 +4,8 @@
 var logger = require("../../common/logger");
 var sqlDB = require("../localRepositories/sqlConnector");
 var common = require("../../common/common");
+var listCommonFunctions = require("../../common/listCommonFunctions");
+
 
 //Add 
 var FilterTheReservedColumnNames = function (columns) {
@@ -40,7 +42,7 @@ async function CheckDBConn() {
 var getColumnsAsString  = function (columns)
 {
     let columnsstr = "*";
-    if (columns && columns.length > 0) {
+    if (listCommonFunctions.isArrayValid(columns)) {
         columns =  FilterTheReservedColumnNames(columns);
         columnsstr = columns.join(",");
     }
@@ -54,7 +56,7 @@ var GetAll = async function (columns, table_name) {
         let columnsstr = getColumnsAsString(columns);
         let command = "select " + columnsstr + " from " + table_name;
         let Results = await sqlDB.get(command);
-        if (Results && Results.length > 0) {
+        if (listCommonFunctions.isArrayValid(Results)) {
             return Results;
         }
         else {
@@ -75,7 +77,7 @@ var GetByFilter = async function (columns, table_name, FilterName, FilterValue) 
         let columnsstr = getColumnsAsString(columns);
         let command = "select " + columnsstr + " from " + table_name + " where " + FilterName + " = " + FilterValue;
         let Results = await sqlDB.get(command);
-        if (Results && Results.length > 0) {
+        if (listCommonFunctions.isArrayValid(Results)) {
             return Results;
         }
         else {

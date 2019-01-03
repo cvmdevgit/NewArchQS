@@ -2,6 +2,8 @@
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var commonMethods = require("../../common/commonMethods");
+var listCommonFunctions = require("../../common/listCommonFunctions");
+
 var QueueBranch_Service_Config = require("./QueueBranch_Service_Config");
 var configRepository = require("../remoteRepositories/configRepository");
 var ConfigsWrapper = require("./ConfigsWrapper");
@@ -21,13 +23,11 @@ var ReadCommands = {
     hall: "hall",
     serviceSegmentPriorityRange: "servicesegmentpriorityrange"
 };
-function isArrayValid(ArrayOfEntities) {
-    return ArrayOfEntities && ArrayOfEntities.length > 0;
-}
+
 
 function filterArray(ArrayOfEntities, BranchID) {
     let tArray = [];
-    if (isArrayValid(ArrayOfEntities)) {
+    if (listCommonFunctions.isArrayValid(ArrayOfEntities)) {
         tArray = ArrayOfEntities.filter(function (value) {
             return value.QueueBranch_ID.toString() == BranchID.toString();
         });
@@ -35,18 +35,9 @@ function filterArray(ArrayOfEntities, BranchID) {
     return tArray;
 }
 
-function find(ArrayOfEntities, EntityID) {
-    let Entity;
-    if (isArrayValid(ArrayOfEntities) && EntityID) {
-        Entity = ArrayOfEntities.find(function (value) {
-            return value.ID.toString() == EntityID.toString();
-        });
-    }
-    return Entity;
-}
 
 function filterCommonConfigs(ArrayOfEntities, BranchID, BranchConfigID) {
-    if (isArrayValid(ArrayOfEntities)) {
+    if (listCommonFunctions.isArrayValid(ArrayOfEntities)) {
         return ArrayOfEntities.filter(function (value) {
             return (value.BranchConfig_ID == null && value.QueueBranch_ID == null) || value.BranchConfig_ID == BranchConfigID || value.QueueBranch_ID == BranchID;
         });
@@ -58,7 +49,7 @@ function filterCommonConfigs(ArrayOfEntities, BranchID, BranchConfigID) {
 var populateEntities = async function () {
     try {
 
-        if (isArrayValid(configsCache.branches)) {
+        if (listCommonFunctions.isArrayValid(configsCache.branches)) {
             for (let i = 0; i < configsCache.branches.length; i++) {
                 let BranchID = configsCache.branches[i].ID;
                 let BranchConfigID = configsCache.branches[i].BranchConfig_ID;
@@ -162,7 +153,7 @@ async function getBranchServiceAllocation(entities) {
     commonMethods.clearArray(entities);
     let tM_MEntities = [];
     let result = await getEntitiesFromServer("QueueBranch", "Service", [], [], tM_MEntities);
-    if (tM_MEntities && tM_MEntities.length > 0) {
+    if (listCommonFunctions.isArrayValid(tM_MEntities)) {
         for (let i = 0; i < tM_MEntities.length; i++) {
             let tBranch_Service = new QueueBranch_Service_Config()
             tBranch_Service.OrgID = tM_MEntities[i].OrgID;
@@ -180,7 +171,7 @@ async function GetBranchesAllocatedUsers(BranchID, entities) {
     //call server
     result = await serverCommunication.callGetBranchesUsersAPI(common.settings.OrgID, BranchID, data);
     if (result != common.error) {
-        if (data && data.length > 0) {
+        if (listCommonFunctions.isArrayValid(data)) {
             //Reutrn successful results
             Array.prototype.push.apply(entities, data[0]);
         }
@@ -291,7 +282,7 @@ async function getEntitiesFromServer(entity1, entity2, filterKeys, filterValues,
         commonMethods.clearArray(entities);
 
         //Add Filter values
-        if (filterKeys && filterValues && filterKeys.length > 0 && filterKeys.length == filterValues.length) {
+        if (listCommonFunctions.isArrayValid(filterKeys)  && listCommonFunctions.isArrayValid(filterValues)) {
             for (let i = 0; i < filterKeys.length; i++) {
                 tentity1NameParameter = new keyValue();
                 tentity1NameParameter.key = filterKeys[i];
@@ -303,7 +294,7 @@ async function getEntitiesFromServer(entity1, entity2, filterKeys, filterValues,
         //call server
         result = await serverCommunication.callGetEntitiesAPI(common.settings.OrgID, entity1, entity2, filters, data);
         if (result != common.error) {
-            if (data && data.length > 0) {
+            if (listCommonFunctions.isArrayValid(data)) {
                 //Reutrn successful results
                 Array.prototype.push.apply(entities, data[0]);
             }
@@ -478,11 +469,11 @@ var getSegmentsOnService = function (ServiceID) {
 };
 
 var getService = function (ServiceID) {
-    return find(configsCache.services, ServiceID);
+    return listCommonFunctions.find(configsCache.services, ServiceID);
 };
 
 var getServiceConfig = function (ServiceConfigID) {
-    return find(configsCache.serviceConfigs, ServiceConfigID);
+    return listCommonFunctions.find(configsCache.serviceConfigs, ServiceConfigID);
 };
 
 var getServiceConfigFromService = function (ServiceID) {

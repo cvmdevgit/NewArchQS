@@ -3,6 +3,8 @@ var logger = require("../../common/logger");
 var common = require("../../common/common");
 var constants = require("../../common/constants");
 var commonMethods = require("../../common/commonMethods");
+var listCommonFunctions = require("../../common/listCommonFunctions");
+ 
 var enums = require("../../common/enums");
 var transaction = require("../data/transaction");
 var repositoriesManager = require("../localRepositories/repositoriesManager");
@@ -158,7 +160,7 @@ function getHallID(transaction, pAllHalls, pAllocatedHalls) {
         //Get Allocated Halls and thier allocated Resources
         let allocatedHalls = getHallsAllocatedonServiceSegment(branch, branchesData, transaction.service_ID, transaction.segment_ID);
 
-        if (allocatedHalls && allocatedHalls.length > 0) {
+        if (listCommonFunctions.isArrayValid(allocatedHalls)) {
             //Copy ID
             allocatedHalls.forEach(function (hall) { pAllocatedHalls.push(hall.Hall_ID); });
             //Filter the working halls
@@ -241,7 +243,7 @@ function holdCurrentCustomer(errors, RequestID, OrgID, BranchID, CounterID, Hold
         }
 
         //Get the transactions that can be served
-        if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
+        if (BracnhData != null && listCommonFunctions.isArrayValid(BracnhData.transactionsData)) {
             //Finish Serving the previous Ticket if exists
             if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
                 Current_Counter_Data.currentTransaction = undefined;
@@ -320,7 +322,7 @@ function finishCurrentCustomer(errors, RequestID, OrgID, BranchID, CounterID, Fi
             return common.error;
         }
         //Get the transactions that can be served
-        if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
+        if (BracnhData != null && listCommonFunctions.isArrayValid(BracnhData.transactionsData)) {
             //Finish Serving the previous Ticket if exists
             if (Current_Counter_Data && Current_Counter_Data.currentTransaction) {
                 Current_Counter_Data.currentTransaction = undefined;
@@ -514,7 +516,7 @@ function serveCustomer(errors, RequestID, OrgID, BranchID, CounterID, Transactio
         }
 
         //Get the transactions that can be served
-        if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0 && TransactionID) {
+        if (BracnhData != null && listCommonFunctions.isArrayValid(BracnhData.transactionsData) && TransactionID) {
             NextCustomerTransaction = BracnhData.transactionsData.find(function (transaction_Data) {
                 return transaction_Data.id.toString() == TransactionID.toString();
             });
@@ -709,7 +711,7 @@ function validateServiceTransfferedTransaction(BranchConfig, transaction) {
             }
         }
 
-        if (validEntities && validEntities.length > 0) {
+        if (listCommonFunctions.isArrayValid(validEntities)) {
             return common.success;
         }
         return common.error;
@@ -1004,7 +1006,7 @@ function getNextCustomer(errors, RequestID, OrgID, BranchID, CounterID, resultAr
             return common.error;
         }
         //Get the transactions that can be served
-        if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
+        if (BracnhData != null && listCommonFunctions.isArrayValid(BracnhData.transactionsData)) {
             //Get Servable Tickets
             let transactions = getServableTransaction(BracnhData, counter);
 
@@ -1088,13 +1090,13 @@ function getHallsforUsers(branch, branchesData, Service_ID, Segment_ID) {
         let allocated_usersOnServices = workFlowManager.getAllocatedUserssOnService(branch, Service_ID);
 
         //Get the halls that can serve ticket
-        if (allocated_usersOnServices && allocated_usersOnServices.length > 0 && allocated_usersOnSegments && allocated_usersOnSegments.length > 0) {
+        if (listCommonFunctions.isArrayValid(allocated_usersOnServices) && listCommonFunctions.isArrayValid(allocated_usersOnSegments)) {
             //Get intersection between segment allocation and service allocation
             let UserThatCanServe = allocated_usersOnServices.filter(function (UserID) {
                 return allocated_usersOnSegments.indexOf(UserID) !== -1;
             });
 
-            if (UserThatCanServe && UserThatCanServe.length > 0) {
+            if (listCommonFunctions.isArrayValid(UserThatCanServe)) {
                 branch.halls.forEach(function (hall) {
                     //counter halls with users logged in these users
                     let counteronHall = branch.counters.filter(function (counter) {
@@ -1104,7 +1106,7 @@ function getHallsforUsers(branch, branchesData, Service_ID, Segment_ID) {
                     }
                     );
 
-                    if (counteronHall && counteronHall.length > 0) {
+                    if (listCommonFunctions.isArrayValid(counteronHall)) {
                         let counteronHallIDs = counteronHall.map(counter => counter.ID);
                         let OpenedCounters = getWorkingCounters(branchesData, counteronHallIDs);
                         addHallData(hallData, hall.ID, counteronHall, OpenedCounters)
@@ -1132,13 +1134,13 @@ function getHallsforCounters(branch, branchesData, Service_ID, Segment_ID) {
         let allocated_countersOnServices = workFlowManager.getAllocatedCountersOnService(branch, Service_ID);
 
         //Get the halls that can serve ticket
-        if (allocated_countersOnServices && allocated_countersOnServices.length > 0 && allocated_countersOnSegments && allocated_countersOnSegments.length > 0) {
+        if (listCommonFunctions.isArrayValid(allocated_countersOnServices) && listCommonFunctions.isArrayValid(allocated_countersOnSegments)) {
             //Get intersection between segment allocation and service allocation
             let CounterThatCanServe = allocated_countersOnServices.filter(function (CounterID) {
                 return allocated_countersOnSegments.indexOf(CounterID) !== -1;
             });
 
-            if (CounterThatCanServe && CounterThatCanServe.length > 0) {
+            if (listCommonFunctions.isArrayValid(CounterThatCanServe)) {
                 branch.halls.forEach(function (hall) {
                     //Get hall counters
                     let counteronHall = branch.counters.filter(function (counter) {
@@ -1146,7 +1148,7 @@ function getHallsforCounters(branch, branchesData, Service_ID, Segment_ID) {
                     }
                     );
 
-                    if (counteronHall && counteronHall.length > 0) {
+                    if (listCommonFunctions.isArrayValid(counteronHall)) {
                         let counteronHallIDs = counteronHall.map(counter => counter.ID);
                         //Get the working counter counts
                         let OpenedCounters = getWorkingCounters(branchesData, counteronHallIDs);
@@ -1187,7 +1189,7 @@ function getHallsAllocatedonServiceSegment(Branch, BranchesData, Service_ID, Seg
 function GetMaxTransactionSequence(transactions, Max_TicketNumber, Min_TicketNumber) {
     try {
         let ticketSequence = parseInt(Min_TicketNumber);
-        if (transactions && transactions.length > 0) {
+        if (listCommonFunctions.isArrayValid(transactions)) {
             let maxTransaction = transactions[0];
             for (let i = 0; i < transactions.length; i++) {
                 //Check for maximum transaction number today
@@ -1225,7 +1227,7 @@ function GetSequenceForFirstTime(BracnhData, transaction, Max_TicketNumber, Min_
         let Today = commonMethods.Today();
         let ticketSequence = 0;
         let transactions;
-        if (BracnhData != null && BracnhData.transactionsData != null && BracnhData.transactionsData.length > 0) {
+        if (BracnhData != null && listCommonFunctions.isArrayValid(BracnhData.transactionsData)) {
             transactions = BracnhData.transactionsData.filter(function (value) {
                 return isTransactionFromSameSequence(value, transaction) && (value.hall_ID == transaction.hall_ID || EnableHallSlipRange == "0");
             }

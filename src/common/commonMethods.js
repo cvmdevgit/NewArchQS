@@ -1,15 +1,15 @@
 function guid() {
   return Math.random().toString() +
-  Math.random().toString() +
-  Math.random().toString();
+    Math.random().toString() +
+    Math.random().toString();
 }
 
 function newDataID() {
-    return Number(Math.random()  * -10000000000);
- }
+  return Number(Math.random() * -10000000000);
+}
 
 function GenerateRequestID() {
-  return Number(Math.random()  * 100000000);
+  return Number(Math.random() * 100000000);
 }
 
 function clearArray(entities) {

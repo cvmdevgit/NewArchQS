@@ -1,6 +1,7 @@
 "use strict";
 var logger = require("../../common/logger");
 var common = require("../../common/common");
+var listCommonFunctions = require("../../common/listCommonFunctions");
 var constants = require("../../common/constants");
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
@@ -59,7 +60,7 @@ var automaticNext = async function () {
         let errors = [];
         //Automatic next
         if (queueCommandManager.initialized) {
-            if (dataService.organizationsData && dataService.organizationsData.length > 0) {
+            if (listCommonFunctions.isArrayValid(dataService.organizationsData)) {
                 dataService.organizationsData.forEach(function (OrgData) {
                     let branchesData = OrgData.branchesData;
                     for (let iBranch = 0; iBranch < branchesData.length; iBranch++) {

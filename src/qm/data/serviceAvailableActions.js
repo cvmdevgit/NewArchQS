@@ -15,6 +15,7 @@ class serviceAvailable {
        this.ChangeServiceEntities=[];
     }
 }
+
 module.exports = serviceAvailable;
 
 

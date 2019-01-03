@@ -4,6 +4,8 @@ var constants = require("../../common/constants");
 var common = require("../../common/common");
 var logger = require("../../common/logger");
 var enums = require("../../common/enums");
+var listCommonFunctions = require("../../common/listCommonFunctions");
+
 var configurationService = require("../configurations/configurationService");
 var dataService = require("../data/dataService");
 var AvailableActions = require("../data/availableActions");
@@ -150,7 +152,7 @@ function setServeWithSettings(branchID, CurrentWindow, CurrentState, availableAc
         //If (Serve) button was hidden then keep (Serve With) button enabled
         availableActions.ListServeWithAllowed = availableActions.HideServeButton ? true : false;
     }
-    let isTransferEnabled = (availableActions.TransferToServiceAllowed == true && availableActions.TransferServicesIDs != null && availableActions.TransferServicesIDs.Length > 0)
+    let isTransferEnabled = (availableActions.TransferToServiceAllowed == true && listCommonFunctions.isArrayValid(availableActions.TransferServicesIDs))
     if (WindowListButtonsVisible && availableActions.HoldAllowed || isTransferEnabled || availableActions.TransferToCounterAllowed) {
         availableActions.ListServeWithAllowed = true;
     }

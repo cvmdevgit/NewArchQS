@@ -2,6 +2,7 @@ var repositoriesManager = require("../localRepositories/repositoriesManager");
 var logger = require("../../common/logger");
 var common = require("../../common/common");
 var enums = require("../../common/enums");
+var listCommonFunctions = require("../../common/listCommonFunctions");
 var constants = require("../../common/constants");
 var commonMethods = require("../../common/commonMethods");
 var transaction = require("../data/transaction");
@@ -224,7 +225,7 @@ function GetCountersStatistics(BranchID, CounterID, UserID, CounterHallID, Alloc
 var GetHallsStatistics = function (BranchID, Hall_IDs) {
     try {
         let hall_statistics = [];
-        if (Hall_IDs && Hall_IDs.length > 0) {
+        if (listCommonFunctions.isArrayValid(Hall_IDs)) {
             let Branchstatistics = getBranchStatisticsData(BranchID);
             for (let i = 0; i < Hall_IDs.length; i++) {
                 //Create initial hall
@@ -236,7 +237,7 @@ var GetHallsStatistics = function (BranchID, Hall_IDs) {
                 //If there is statistics
                 if (Branchstatistics) {
                     let statistics = Branchstatistics.statistics;
-                    if (statistics && statistics.length > 0) {
+                    if (listCommonFunctions.isArrayValid(statistics)) {
                         statistics.forEach(statistics => {
                             if (statistics.hall_ID == hall_id) {
                                 hall.WaitingCustomers += statistics.WaitingCustomers;
@@ -396,7 +397,7 @@ var initialize = async function () {
         //Get all transactions
         let transactionsData = [];
         let result = await repositoriesManager.entitiesRepo.getAll(new transaction(), transactionsData);
-        if (result == common.success && transactionsData && transactionsData.length > 0) {
+        if (result == common.success && listCommonFunctions.isArrayValid(transactionsData)) {
             //filter for today only 
             transactionsData = transactionsData.filter(function (value) {
                 return value.creationTime > Today && value.creationTime < tomorrow;
