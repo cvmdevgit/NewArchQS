@@ -848,10 +848,8 @@ function transferToCounter(errors, RequestID, OrgID, BranchID, CounterID, ToCoun
                     Transactions.push(NewTransaction);
                 }
             }
-
-            return result;
         }
-        return common.error;
+        return result;
     }
     catch (error) {
         logger.logError(error);
@@ -972,9 +970,8 @@ function transferToService(errors, RequestID, OrgID, BranchID, CounterID, Servic
 
                 }
             }
-            return result;
         }
-        return common.error;
+        return result;
     }
     catch (error) {
         logger.logError(error);
