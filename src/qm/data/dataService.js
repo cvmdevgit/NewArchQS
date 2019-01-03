@@ -364,19 +364,21 @@ function isCustomerWaitingOnCounter(CounterID, AllocatedSegment, AllocatedServic
             return true;
         }
 
+        let isCustomerWaiting = false;
+        
         //if the transaction is not on the same hall
         let counter = configurationService.getCounterConfig(CounterID);
         if (!counter || counter.Hall_ID.toString() != transaction.hall_ID.toString()) {
-            return false;
+            return isCustomerWaiting;
         }
 
         //If it is serable and allocated on counter
         if (isValidWaitingTransaction(AllocatedSegment, AllocatedService, transaction)) {
             if (transaction.counter_ID == null || transaction.counter_ID == CounterID) {
-                return true;
+                isCustomerWaiting = true;
             }
         }
-        return false;
+        return isCustomerWaiting;
     }
     catch (error) {
         logger.logError(error);
