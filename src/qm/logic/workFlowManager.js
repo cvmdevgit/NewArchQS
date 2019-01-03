@@ -349,18 +349,18 @@ function setServingUserssForTransaction(branchConfig, service_ID, segment_ID, tr
         if (transaction.user_ID && transaction.user_ID > 0) {
             //If the transaction is counter specific
             transaction._servingUsers = [transaction.user_ID];
+            return common.success;
         }
-        else {
-            //Set Serving Users
-            let AllocatedUsersOnService = getAllocatedEntitiesOnService(branchID, service_ID, enums.AllocationTypes.User);
-            let AllocatedUsersOnSegment = getAllocatedEntitiesOnSegment(branchConfig, segment_ID, enums.AllocationTypes.User);
-            if (listCommonFunctions.isArrayValid(AllocatedUsersOnService) && listCommonFunctions.isArrayValid(AllocatedUsersOnSegment)) {
-                let users = AllocatedUsersOnService.filter(function (userID) {
-                    return (AllocatedUsersOnSegment.indexOf(parseInt(userID)) > -1);
-                });
-                transaction._servingUsers = users ? users : [];
-            }
-        }
+
+         //Set Serving Users
+         let AllocatedUsersOnService = getAllocatedEntitiesOnService(branchID, service_ID, enums.AllocationTypes.User);
+         let AllocatedUsersOnSegment = getAllocatedEntitiesOnSegment(branchConfig, segment_ID, enums.AllocationTypes.User);
+         if (listCommonFunctions.isArrayValid(AllocatedUsersOnService) && listCommonFunctions.isArrayValid(AllocatedUsersOnSegment)) {
+             let users = AllocatedUsersOnService.filter(function (userID) {
+                 return (AllocatedUsersOnSegment.indexOf(parseInt(userID)) > -1);
+             });
+             transaction._servingUsers = users ? users : [];
+         }
 
         return common.success;
     }
@@ -516,6 +516,22 @@ function setServiceListAvailableActions(branchID, Service_ID, AllcatedEntities, 
     }
 }
 
+function getWaitingCustomersForAservice(branchID,Service_ID)
+{
+    try{
+        let FilterStatistics = new statisticsData();
+        FilterStatistics.queueBranch_ID = branchID;
+        FilterStatistics.service_ID = Service_ID;
+        let Statistics = statisticsManager.GetSpecificStatistics(FilterStatistics);
+        let NumberOfWaitedCustomers = Statistics ? Statistics.WaitedCustomersNo : 0;
+        return NumberOfWaitedCustomers;
+    }
+    catch (error) {
+        logger.logError(error);
+        return 0;
+    }
+}
+
 function getServiceAvailableActions(branchID, Service_ID) {
     try {
         let AllcatedEntities = [];
@@ -553,11 +569,7 @@ function getServiceAvailableActions(branchID, Service_ID) {
             tServiceAvailableActions.AllowTransferingFromAnother = service.TransferAnotherToThisService;
 
             //TODO: fill waiting customers
-            let FilterStatistics = new statisticsData();
-            FilterStatistics.queueBranch_ID = branchID;
-            FilterStatistics.service_ID = Service_ID;
-            let Statistics = statisticsManager.GetSpecificStatistics(FilterStatistics);
-            let NumberOfWaitedCustomers = Statistics ? Statistics.WaitedCustomersNo : 0;
+            let NumberOfWaitedCustomers = getWaitingCustomersForAservice(branchID,Service_ID);
 
             //Allow ticket issue On Ticketing Software
             tServiceAvailableActions.AllowTicketIssuing = (service.MaxCustomersPerDay == 0 || service.MaxCustomersPerDay >= NumberOfWaitedCustomers + 1);
@@ -904,9 +916,6 @@ function PrepareAddList(orgID, branchID, counterID) {
         let isSegmentAllocatedOnServingEntity = isSegmentAllocated(BranchConfig, CurrentCounter, UserConfig, CurrentTransaction.segment_ID, AllocationType);
 
 
-
-
-
         //Check the allocate
         for (let index = 0; index < allocated_Queue.length; index++) {
             let serviceID = allocated_Queue[index];
@@ -924,7 +933,6 @@ function PrepareAddList(orgID, branchID, counterID) {
     }
     catch (error) {
         logger.logError(error);
-        return [];
     }
 }
 function IsTransferBackAllowedForCounter(branchID, CurrentTransaction) {
@@ -975,6 +983,7 @@ function IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransact
 }
 function IsTransferBackAllowed(orgID, branchID, counterID) {
     try {
+        let isTransferBackAllowed = false;
         let output = [];
         let CounterData;
         let CurrentActivity;
@@ -985,23 +994,25 @@ function IsTransferBackAllowed(orgID, branchID, counterID) {
         CurrentTransaction = output[3];
         if (!CounterData) {
             //invalid branch counter
-            return;
+            return ;
         }
         //Check if the ticket was transferred
         if (!CurrentTransaction || !CurrentTransaction.transferByCounter_ID || !CurrentTransaction.transferredFromService_ID) {
-            return false;
+            return isTransferBackAllowed;
         }
+
         let AllocationType = configurationService.getCommonSettings(branchID, constants.SERVICE_ALLOCATION_TYPE);
         if (AllocationType == enums.AllocationTypes.Counter) {
-            return IsTransferBackAllowedForCounter(branchID, CurrentTransaction);
+            isTransferBackAllowed =  IsTransferBackAllowedForCounter(branchID, CurrentTransaction);
         }
         else {
-            return IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransaction);
+            isTransferBackAllowed =  IsTransferBackAllowedForUser(branchID, CurrentActivity, CurrentTransaction);
         }
+        return isTransferBackAllowed;
     }
     catch (error) {
         logger.logError(error);
-        return;
+        return false;
     }
 }
 //Get Allocated Segments For Client 
